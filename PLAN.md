@@ -6,10 +6,6 @@ A working plan. Iterate freely. Things land in code only after they survive a fe
 
 An open-source Python TUI coding agent. Foundation-first: well-structured, extensible, documented. Not chasing feature parity with Claude Code / Aider / Cursor — aiming for a clean base that's a pleasure to read, extend, and benchmark against.
 
-## Name
-
-`termcoder` — short, self-descriptive, signals "terminal + coding tool" without jargon.
-
 ## Stack
 
 - **Python 3.13**
@@ -75,10 +71,19 @@ Rule: distinguish "failures the model should handle" from "failures the user mus
 - Code is typed (mypy clean), linted (ruff clean), and tested at the layer seams.
 - README explains the architecture and how to add a tool / a provider.
 
-## Open questions
+## Build sequence
 
-- Final name confirmation (availability checks).
-- README structure for the v0.1 release (badges, install, quickstart, screenshot/GIF, architecture, contributing).
+Roughly one PR per step. Each step lands behind green CI before the next starts. The order is dependency-driven — every step's tests can run against what's already merged. Check a box when the PR is merged on `main`.
+
+- [ ] **1. Core types, events, errors.** `types.py`, `events.py`, `errors.py`, plus the `src/termcoder/` package skeleton (`__init__.py`, `py.typed`). Pure, no I/O — the contract everything else consumes.
+- [ ] **2. Provider seam.** `providers/protocol.py` plus `tests/fakes/fake_provider.py` with scripted `AgentEvent` streams. The Protocol takes a message list (including tool-role `ToolResult` messages) and yields `AgentEvent`s — nail the round-trip shape here so step 5 doesn't retrofit it. Design against the fake first.
+- [ ] **3. OpenAI-compatible provider.** Real streaming implementation, tested with hand-crafted JSON fixtures (not the live API).
+- [ ] **4. Tools.** `tools/protocol.py`, `tools/registry.py`, then `read.py`, `write.py`, `bash.py`. Each tested in isolation with `tmp_path`. Errors return as text, not exceptions.
+- [ ] **5. Agent loop.** `agent/state.py`, `agent/prompt.py`, `agent/loop.py`, plus `tests/fakes/fake_permission.py` (auto-allow for tests). Integration tests with the FakeProvider + real tools driving multi-turn conversations including tool calls. One test covers mid-stream gating: the model streams a tool call, the loop pauses for the permission callable, then resumes.
+- [ ] **6. Headless wiring.** `permissions.py`, `config.py`, `composition.py`, `cli.py`, `logging.py`, plus `__main__.py` and the `[project.scripts]` entry so `uv run termcoder` resolves. End-to-end run via stdin/stdout — no TUI yet, but Ctrl-C cleanly aborts the current turn. Proves the wiring before adding the visible layer.
+- [ ] **7. TUI.** `tui/app.py` and the three widgets (`transcript`, `input`, `permission_modal`). Textual `Pilot` smoke test.
+
+README architecture notes ("how to add a tool / a provider") land in whichever step introduces the seam they describe; a final docs pass after step 7 closes the v0.1 definition of done.
 
 ## Roadmap shape (post-MVP, not committed)
 
