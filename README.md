@@ -1,12 +1,24 @@
-# termcoder
+<h3 align="center">termcoder</h3>
 
-[![CI](https://github.com/nattergabriel/termcoder/actions/workflows/ci.yml/badge.svg)](https://github.com/nattergabriel/termcoder/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
+<p align="center">
+  An open-source TUI coding agent in Python. Built as a clean, modular foundation that's easy to read, extend, and benchmark against.
+</p>
 
-An open-source TUI coding agent in Python — built as a clean, modular foundation that's easy to read, extend, and benchmark against.
+<p align="center">
+  <a href="https://github.com/nattergabriel/termcoder/actions/workflows/ci.yml"><img src="https://github.com/nattergabriel/termcoder/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/nattergabriel/termcoder/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.13%2B-blue.svg" alt="Python 3.13+" /></a>
+</p>
 
-> **Status: pre-v0.1.** Architecture and scope are defined; code is in active development. See [PLAN.md](PLAN.md) for the working spec.
+---
+
+## Why
+
+The coding-agent space is crowded with strong tools (Aider, Claude Code, Crush, OpenCode, Cline, Codex, Gemini CLI, …). termcoder isn't competing on features. It's a deliberately small reference implementation: a foundation that's straightforward to read, extend, and benchmark against. If you want to study how a coding agent is structured, or fork one as a starting point, that's the goal.
+
+## How it works
+
+A small async loop routes user input to an LLM provider, dispatches tool calls (with permission checks for anything that mutates state), and streams typed events to the Textual TUI. Each layer (provider, tool, permission policy) is a swappable seam behind a `typing.Protocol`, wired together at a single composition root. The core runs against a hand-written `FakeProvider` in tests, so most of the codebase is testable with no network and no API key.
 
 ## Install (target for v0.1)
 
@@ -16,8 +28,8 @@ export OPENAI_API_KEY="..."
 termcoder
 ```
 
-Any OpenAI-compatible provider works (OpenAI, OpenRouter, local llama.cpp, …) — set `OPENAI_BASE_URL` accordingly.
+Any OpenAI-compatible provider works (OpenAI, OpenRouter, local llama.cpp, …). Set `OPENAI_BASE_URL` accordingly.
 
 ## License
 
-[MIT](LICENSE). Solo-maintained — best-effort response time.
+[MIT](LICENSE). Solo-maintained, best-effort response time.

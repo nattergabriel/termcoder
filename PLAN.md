@@ -14,7 +14,7 @@ An open-source Python TUI coding agent. Foundation-first: well-structured, exten
 
 - **Python 3.13**
 - **Textual** — TUI framework
-- **OpenAI SDK** — first provider (broad ecosystem compatibility: OpenAI, OpenRouter, Groq, DeepSeek, Together, local llama.cpp/Ollama, …)
+- **OpenAI-compatible Chat Completions wire** — first provider abstraction; any compatible endpoint works (OpenAI, OpenRouter, Groq, DeepSeek, Together, local llama.cpp/Ollama, …). The OpenAI Python SDK is one implementation choice, not the abstraction itself.
 - **uv** — package + dependency management
 - **pytest** — tests
 - **ruff** — lint + format
