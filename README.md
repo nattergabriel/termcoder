@@ -1,7 +1,8 @@
 <h3 align="center">termcoder</h3>
 
 <p align="center">
-  An open-source TUI coding agent in Python. Built as a clean, modular foundation that's easy to read, extend, and benchmark against.
+  An open-source TUI coding agent in Python.<br>
+  Built as a clean, modular foundation that's easy to read, extend, and benchmark against.
 </p>
 
 <p align="center">
@@ -14,7 +15,7 @@
 
 ## Why
 
-The coding-agent space is crowded with strong tools (Aider, Claude Code, Crush, OpenCode, Cline, Codex, Gemini CLI, …). termcoder isn't competing on features. It's a deliberately small reference implementation: a foundation that's straightforward to read, extend, and benchmark against. If you want to study how a coding agent is structured, or fork one as a starting point, that's the goal.
+The coding-agent space is crowded with strong tools (Claude Code, OpenCode, Aider, ...). termcoder isn't competing on features. It's a deliberately small reference implementation: a foundation that's straightforward to read, extend, and benchmark against. If you want to study how a coding agent is structured, or fork one as a starting point, that's the goal.
 
 ## How it works
 
