@@ -35,7 +35,7 @@ Briefly: four layer packages plus cross-cutting root modules.
 
 Two things the loop produces that everything else consumes: `AgentEvent`s (the streaming output of `agent/loop.py`, consumed by the TUI as an async iterator) and shared domain types (`Message`, `Turn`, `ToolCall`, `ToolResult`). Keep both stable — they are the contract.
 
-The provider seam **must** support a hand-written `FakeProvider` for tests. Design the interface around that constraint, not around the OpenAI SDK's shape — most tests run against the fake with no network and no API key.
+The provider seam **must** support a hand-written `FakeProvider` for tests. Design the interface around that constraint, not around any specific vendor's wire format or SDK shape — most tests run against the fake with no network and no API key.
 
 ## Code style and conventions
 
