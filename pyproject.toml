@@ -16,10 +16,10 @@ packages = ["src/termcoder"]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.3",
-    "mypy>=1.13",
-    "ruff>=0.8",
-    "pre-commit>=4.0",
+    "pytest",
+    "mypy",
+    "ruff",
+    "pre-commit",
 ]
 
 [tool.ruff]
