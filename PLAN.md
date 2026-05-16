@@ -22,16 +22,7 @@ An open-source Python TUI coding agent. Foundation-first: well-structured, exten
 
 ## Architecture
 
-Six layers, strict separation. Each is independently testable.
-
-1. **`providers/`** — LLM abstraction. One interface; OpenAI-compatible implementation first. Adapters (Anthropic, etc.) come later.
-2. **`tools/`** — pluggable tool modules. Each tool = schema + handler + permission policy. Adding a tool should be a small, local change.
-3. **`agent/`** — pure orchestration loop. Takes provider + tools + context, runs turns. No I/O concerns, no UI concerns.
-4. **`context/`** — conversation history, system prompt assembly, file-state tracking, (eventually) compaction.
-5. **`permissions/`** — gates dangerous tools (Bash, Write, Edit). One policy interface, multiple modes later.
-6. **`tui/`** — Textual app. Thin view layer over the agent loop. Should be replaceable (headless mode possible).
-
-Entry point: `main.py` (or `termcoder/__main__.py`) wires the layers together.
+See `CLAUDE.md` § Architecture and § Project layout — the single source of truth for the layer breakdown, file tree, and folder rules. Update only there, never duplicate here.
 
 ## MVP scope (v0.1 — "it works")
 
@@ -54,7 +45,7 @@ Goal: fast, deterministic, no API keys required for normal CI.
 - **Tools tested in isolation** — `Read`/`Write`/`Bash` use a real `tmp_path` (pytest fixture). No filesystem mocks.
 - **TUI tested with Textual `Pilot`** — keypress/snapshot tests.
 - **Integration tests** — full agent loop with `FakeProvider` simulating multi-turn conversations including tool calls.
-- **Real-provider smoke tests** — recorded responses (e.g. `vcrpy` or JSON fixtures). Run on-demand / nightly, not on every PR.
+- **Real-provider smoke tests** — hand-crafted JSON fixtures of expected responses. Run on-demand / nightly, not on every PR.
 
 This forces the provider seam to be clean (because it must support a fake) and keeps CI fast.
 
@@ -87,8 +78,6 @@ Rule: distinguish "failures the model should handle" from "failures the user mus
 ## Open questions
 
 - Final name confirmation (availability checks).
-- Exact package layout: flat (`termcoder/<layer>/...`) vs. `src/termcoder/...`.
-- Logging strategy (structured logs to file, separate from TUI render).
 - README structure for the v0.1 release (badges, install, quickstart, screenshot/GIF, architecture, contributing).
 
 ## Roadmap shape (post-MVP, not committed)
