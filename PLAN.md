@@ -75,8 +75,8 @@ Rule: distinguish "failures the model should handle" from "failures the user mus
 
 Roughly one PR per step. Each step lands behind green CI before the next starts. The order is dependency-driven — every step's tests can run against what's already merged. Check a box when the PR is merged on `main`.
 
-- [ ] **1. Core types, events, errors.** `types.py`, `events.py`, `errors.py`, plus the `src/termcoder/` package skeleton (`__init__.py`, `py.typed`). Pure, no I/O — the contract everything else consumes.
-- [ ] **2. Provider seam.** `providers/protocol.py` plus `tests/fakes/fake_provider.py` with scripted `AgentEvent` streams. The Protocol takes a message list (including tool-role `ToolResult` messages) and yields `AgentEvent`s — nail the round-trip shape here so step 5 doesn't retrofit it. Design against the fake first.
+- [x] **1. Core types, events, errors.** `types.py`, `events.py`, `errors.py`, plus the `src/termcoder/` package skeleton (`__init__.py`). Pure, no I/O — the contract everything else consumes.
+- [x] **2. Provider seam.** `providers/protocol.py` plus `tests/fakes/fake_provider.py` with scripted `AgentEvent` streams. The Protocol takes a message list (including tool-role `ToolResult` messages) and yields `AgentEvent`s — nail the round-trip shape here so step 5 doesn't retrofit it. Design against the fake first.
 - [ ] **3. OpenAI-compatible provider.** Real streaming implementation, tested with hand-crafted JSON fixtures (not the live API).
 - [ ] **4. Tools.** `tools/protocol.py`, `tools/registry.py`, then `read.py`, `write.py`, `bash.py`. Each tested in isolation with `tmp_path`. Errors return as text, not exceptions.
 - [ ] **5. Agent loop.** `agent/state.py`, `agent/prompt.py`, `agent/loop.py`, plus `tests/fakes/fake_permission.py` (auto-allow for tests). Integration tests with the FakeProvider + real tools driving multi-turn conversations including tool calls. One test covers mid-stream gating: the model streams a tool call, the loop pauses for the permission callable, then resumes.
