@@ -4,6 +4,7 @@ Pure data. No I/O, no behavior. Providers adapt vendor wire formats to/from thes
 types at their boundary; the agent core only ever sees these shapes.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -61,3 +62,17 @@ class Turn:
     """
 
     messages: tuple[Message, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True, slots=True)
+class ToolSchema:
+    """JSON-Schema description of a tool, as advertised to the provider.
+
+    Generic across vendors: each provider adapts this to its own wire format
+    (OpenAI's `tools` array, Anthropic's `tools` block, etc.) at its boundary.
+    `parameters` follows the JSON Schema object spec.
+    """
+
+    name: ToolName
+    description: str
+    parameters: Mapping[str, object]

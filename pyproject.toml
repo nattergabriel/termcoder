@@ -17,6 +17,7 @@ packages = ["src/termcoder"]
 [dependency-groups]
 dev = [
     "pytest",
+    "pytest-asyncio",
     "mypy",
     "ruff",
     "pre-commit",
@@ -45,3 +46,4 @@ warn_unused_configs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
