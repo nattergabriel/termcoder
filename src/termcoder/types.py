@@ -4,12 +4,13 @@ Pure data. No I/O, no behavior. Providers adapt vendor wire formats to/from thes
 types at their boundary; the agent core only ever sees these shapes.
 """
 
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Literal
 
 type Role = Literal["system", "user", "assistant", "tool"]
 type ToolName = str
+type PermissionDecision = Literal["allow", "deny"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +25,9 @@ class ToolCall:
     id: str
     name: ToolName
     arguments: str
+
+
+type PermissionCheck = Callable[[ToolCall], Awaitable[PermissionDecision]]
 
 
 @dataclass(frozen=True, slots=True)
