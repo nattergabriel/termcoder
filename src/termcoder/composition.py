@@ -12,12 +12,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import assert_never
 
+from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 
 from termcoder.agent.loop import Agent
 from termcoder.agent.prompt import assemble_system_prompt
 from termcoder.config import Config, default_user_config_path, save_setting
 from termcoder.permissions import PromptUser, ask_each
+from termcoder.providers.anthropic import DEFAULT_MAX_TOKENS, AnthropicProvider
 from termcoder.providers.openai_compatible import OpenAICompatibleProvider
 from termcoder.providers.protocol import Provider
 from termcoder.slash_commands import SlashCommand, SlashCommandError, SlashCommands
@@ -38,16 +40,7 @@ class AppContext:
 
 
 def build(config: Config, prompt_user: PromptUser) -> AppContext:
-    client = AsyncOpenAI(
-        api_key=os.environ.get("OPENAI_API_KEY"),
-        base_url=os.environ.get("OPENAI_BASE_URL"),
-    )
-    provider = OpenAICompatibleProvider(
-        client=client,
-        model=config.model,
-        temperature=config.temperature,
-        max_tokens=config.max_tokens,
-    )
+    provider = _build_provider(config)
     registry = Registry.from_iterable([Read(), Write(), Bash()])
     agent = Agent(
         provider=provider,
@@ -59,6 +52,27 @@ def build(config: Config, prompt_user: PromptUser) -> AppContext:
         [_model_command(provider, default_user_config_path())]
     )
     return AppContext(agent=agent, config=config, slash_commands=slash_commands)
+
+
+def _build_provider(config: Config) -> Provider:
+    if config.provider == "openai":
+        return OpenAICompatibleProvider(
+            client=AsyncOpenAI(
+                api_key=os.environ.get("OPENAI_API_KEY"),
+                base_url=os.environ.get("OPENAI_BASE_URL"),
+            ),
+            model=config.model,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+        )
+    if config.provider == "anthropic":
+        return AnthropicProvider(
+            client=AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")),
+            model=config.model,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens if config.max_tokens is not None else DEFAULT_MAX_TOKENS,
+        )
+    assert_never(config.provider)
 
 
 def _permission_check(config: Config, prompt_user: PromptUser) -> PermissionCheck:

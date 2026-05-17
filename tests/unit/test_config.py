@@ -75,6 +75,22 @@ def test_unknown_permission_mode_raises(tmp_path: Path) -> None:
         load_config(cwd=tmp_path, user_config_path=user_path)
 
 
+def test_provider_anthropic_parses(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'provider = "anthropic"\n')
+
+    config = load_config(cwd=tmp_path, user_config_path=user_path)
+    assert config.provider == "anthropic"
+
+
+def test_unknown_provider_raises(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'provider = "cohere"\n')
+
+    with pytest.raises(ConfigError, match="provider"):
+        load_config(cwd=tmp_path, user_config_path=user_path)
+
+
 def test_wrong_type_raises(tmp_path: Path) -> None:
     user_path = tmp_path / "user.toml"
     _write(user_path, "model = 42\n")
