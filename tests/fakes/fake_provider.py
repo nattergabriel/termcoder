@@ -21,6 +21,7 @@ class FakeProvider:
     """Plays scripted `AgentEvent` streams, one script per `stream()` call."""
 
     scripts: list[list[AgentEvent]]
+    model: str = "fake-model"
     received_calls: list[tuple[tuple[Message, ...], tuple[ToolSchema, ...]]] = field(
         default_factory=list
     )

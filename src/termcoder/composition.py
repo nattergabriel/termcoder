@@ -19,6 +19,7 @@ from termcoder.agent.prompt import assemble_system_prompt
 from termcoder.config import Config, default_user_config_path, save_setting
 from termcoder.permissions import PromptUser, ask_each
 from termcoder.providers.openai_compatible import OpenAICompatibleProvider
+from termcoder.providers.protocol import Provider
 from termcoder.slash_commands import SlashCommand, SlashCommandError, SlashCommands
 from termcoder.tools.bash import Bash
 from termcoder.tools.read import Read
@@ -66,7 +67,7 @@ def _permission_check(config: Config, prompt_user: PromptUser) -> PermissionChec
     assert_never(config.permission_mode)
 
 
-def _model_command(provider: OpenAICompatibleProvider, save_path: Path) -> SlashCommand:
+def _model_command(provider: Provider, save_path: Path) -> SlashCommand:
     """`/model <name>` — swap the live provider's model and persist to `save_path`."""
 
     async def handle(args: Sequence[str]) -> str:

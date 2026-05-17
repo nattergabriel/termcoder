@@ -21,6 +21,9 @@ from termcoder.types import Message, ToolSchema
 class Provider(Protocol):
     """Streams `AgentEvent`s from a conversation prefix and a tool catalog."""
 
+    model: str
+    """The model identifier the provider will request. Mutable so `/model` can swap it live."""
+
     def stream(
         self,
         messages: Sequence[Message],
