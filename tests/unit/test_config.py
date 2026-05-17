@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from termcoder.config import Config, ConfigError, load_config
+from termcoder.config import Config, ConfigError, load_config, save_setting
 
 
 def _write(path: Path, body: str) -> None:
@@ -81,3 +81,35 @@ def test_wrong_type_raises(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigError, match="model"):
         load_config(cwd=tmp_path, user_config_path=user_path)
+
+
+def test_save_setting_creates_file_and_round_trips(tmp_path: Path) -> None:
+    path = tmp_path / "nested" / "config.toml"
+
+    save_setting("model", "gpt-saved", path=path)
+
+    assert path.is_file()
+    reloaded = load_config(cwd=tmp_path / "elsewhere", user_config_path=path)
+    assert reloaded.model == "gpt-saved"
+
+
+def test_save_setting_updates_existing_key_and_preserves_others(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    _write(path, 'model = "old"\ntemperature = 0.25\n')
+
+    save_setting("model", "new", path=path)
+
+    reloaded = load_config(cwd=tmp_path / "elsewhere", user_config_path=path)
+    assert reloaded.model == "new"
+    assert reloaded.temperature == pytest.approx(0.25)
+
+
+def test_save_setting_escapes_strings(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+
+    # Backslash, quote, and a newline all need escaping in a TOML basic string.
+    tricky = 'has "quotes" and a\nnewline and \\ backslash'
+    save_setting("system_prompt", tricky, path=path)
+
+    reloaded = load_config(cwd=tmp_path / "elsewhere", user_config_path=path)
+    assert reloaded.system_prompt == tricky
