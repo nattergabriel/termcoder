@@ -52,6 +52,35 @@ async def test_read_line_removes_reader_when_cancelled(pipe_stdin: int) -> None:
     assert await _read_line("> ") == "late"
 
 
+async def test_read_line_falls_back_when_add_reader_is_not_supported(
+    pipe_stdin: int,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    loop = asyncio.get_running_loop()
+    original_add_reader = loop.add_reader
+
+    def unsupported_add_reader(fd: int, callback: object, *args: object) -> None:
+        raise NotImplementedError
+
+    loop.add_reader = unsupported_add_reader  # type: ignore[assignment,method-assign]
+    try:
+
+        async def write_line() -> None:
+            await asyncio.sleep(0)
+            os.write(pipe_stdin, b"windows\n")
+
+        writer = asyncio.create_task(write_line())
+
+        line = await _read_line("> ")
+
+        await writer
+    finally:
+        loop.add_reader = original_add_reader  # type: ignore[method-assign]
+
+    assert line == "windows"
+    assert capsys.readouterr().out == "> "
+
+
 async def test_sigint_handler_only_cancels_active_turn() -> None:
     loop = asyncio.get_running_loop()
     original_add_signal_handler = loop.add_signal_handler
