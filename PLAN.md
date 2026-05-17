@@ -79,7 +79,7 @@ Roughly one PR per step. Each step lands behind green CI before the next starts.
 - [x] **3. OpenAI-compatible provider.** Real streaming via the OpenAI SDK with `base_url` override, tested with hand-crafted fixtures (not the live API).
 - [x] **4. Tools.** `tools/protocol.py`, `tools/registry.py`, then `read.py`, `write.py`, `bash.py`. Each tested in isolation with `tmp_path`. Errors return as text, not exceptions.
 - [x] **5. Agent loop.** `agent/state.py`, `agent/prompt.py`, `agent/loop.py`, plus `tests/fakes/fake_permission.py` (auto-allow for tests). Integration tests with the FakeProvider + real tools driving multi-turn conversations including tool calls. One test covers mid-stream gating: the model streams a tool call, the loop pauses for the permission callable, then resumes.
-- [ ] **6. Headless wiring.** `permissions.py`, `config.py`, `composition.py`, `cli.py`, `logging.py`, plus `__main__.py` and the `[project.scripts]` entry so `uv run termcoder` resolves. End-to-end run via stdin/stdout — no TUI yet, but Ctrl-C cleanly aborts the current turn. Proves the wiring before adding the visible layer.
+- [x] **6. Headless wiring.** `permissions.py`, `config.py`, `composition.py`, `cli.py`, `logging.py`, plus `__main__.py` and the `[project.scripts]` entry so `uv run termcoder` resolves. End-to-end run via stdin/stdout — no TUI yet, but Ctrl-C cleanly aborts the current turn. Proves the wiring before adding the visible layer.
 - [ ] **7. TUI.** `tui/app.py` and the three widgets (`transcript`, `input`, `permission_modal`). Textual `Pilot` smoke test.
 
 README architecture notes ("how to add a tool / a provider") land in whichever step introduces the seam they describe; a final docs pass after step 7 closes the v0.1 definition of done.
