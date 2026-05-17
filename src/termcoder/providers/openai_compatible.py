@@ -26,6 +26,8 @@ class OpenAICompatibleProvider:
 
     client: AsyncOpenAI
     model: str
+    temperature: float = 0.7
+    max_tokens: int | None = None
 
     async def stream(
         self,
@@ -34,12 +36,16 @@ class OpenAICompatibleProvider:
     ) -> AsyncIterator[AgentEvent]:
         api_messages: list[Any] = [_to_api_message(m) for m in messages]
         api_tools: list[Any] | Omit = [_to_api_tool(t) for t in tools] if tools else omit
-        chunks = await self.client.chat.completions.create(
-            model=self.model,
-            messages=api_messages,
-            tools=api_tools,
-            stream=True,
-        )
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "messages": api_messages,
+            "tools": api_tools,
+            "stream": True,
+            "temperature": self.temperature,
+        }
+        if self.max_tokens is not None:
+            kwargs["max_tokens"] = self.max_tokens
+        chunks = await self.client.chat.completions.create(**kwargs)
         async for event in _translate(chunks):
             yield event
 

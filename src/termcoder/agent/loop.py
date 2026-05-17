@@ -17,6 +17,7 @@ System errors (provider unreachable, registry bugs) raise; tool failures and
 denials surface as `ToolResult(is_error=True)` so the model can react.
 """
 
+import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
@@ -48,39 +49,44 @@ class Agent:
     """Cap on provider rounds per turn — stops runaway tool-call loops."""
 
     async def run_turn(self, user_input: str) -> AsyncIterator[AgentEvent]:
-        self.state.append_user(user_input)
-        for _ in range(self.max_iterations):
-            assistant_text = ""
-            tool_calls: list[ToolCall] = []
-            async for event in self.provider.stream(
-                self._messages_for_provider(), self.registry.schemas()
-            ):
-                match event:
-                    case TextDelta():
-                        assistant_text += event.text
-                        yield event
-                    case ToolCallRequested():
-                        tool_calls.append(event.tool_call)
-                        yield event
-                    case _:
-                        # ToolCallCompleted / TurnComplete are loop-owned; a provider
-                        # yielding them is a contract violation, not a routine event.
-                        raise TermcoderError(f"provider emitted unexpected event: {event!r}")
+        checkpoint = len(self.state.messages)
+        try:
+            self.state.append_user(user_input)
+            for _ in range(self.max_iterations):
+                assistant_text = ""
+                tool_calls: list[ToolCall] = []
+                async for event in self.provider.stream(
+                    self._messages_for_provider(), self.registry.schemas()
+                ):
+                    match event:
+                        case TextDelta():
+                            assistant_text += event.text
+                            yield event
+                        case ToolCallRequested():
+                            tool_calls.append(event.tool_call)
+                            yield event
+                        case _:
+                            # ToolCallCompleted / TurnComplete are loop-owned; a provider
+                            # yielding them is a contract violation, not a routine event.
+                            raise TermcoderError(f"provider emitted unexpected event: {event!r}")
 
-            self.state.append_assistant(assistant_text, tool_calls)
+                self.state.append_assistant(assistant_text, tool_calls)
 
-            if not tool_calls:
-                yield TurnComplete()
-                return
+                if not tool_calls:
+                    yield TurnComplete()
+                    return
 
-            for tool_call in tool_calls:
-                result = await self._dispatch(tool_call)
-                self.state.append_tool_result(result)
-                yield ToolCallCompleted(result=result)
+                for tool_call in tool_calls:
+                    result = await self._dispatch(tool_call)
+                    self.state.append_tool_result(result)
+                    yield ToolCallCompleted(result=result)
 
-        raise TermcoderError(
-            f"agent exceeded max_iterations={self.max_iterations} without completing the turn"
-        )
+            raise TermcoderError(
+                f"agent exceeded max_iterations={self.max_iterations} without completing the turn"
+            )
+        except asyncio.CancelledError:
+            self.state.truncate(checkpoint)
+            raise
 
     async def _dispatch(self, call: ToolCall) -> ToolResult:
         decision = await self.check_permission(call)

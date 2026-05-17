@@ -37,3 +37,7 @@ class State:
         self._messages.append(
             Message(role="tool", content=result.content, tool_call_id=result.tool_call_id)
         )
+
+    def truncate(self, length: int) -> None:
+        """Drop messages appended after a known-good checkpoint."""
+        del self._messages[length:]
