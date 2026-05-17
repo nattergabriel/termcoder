@@ -28,12 +28,12 @@ CI (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy 
 
 > **Source of truth for structure.** This section and **Project layout** below are the only place that describes the codebase's organization. Update them whenever you add, rename, move, or remove a file or folder — and only here. `PLAN.md` deliberately defers to this file so the structure lives in one place.
 
-Briefly: four layer packages plus cross-cutting root modules.
+Briefly: three layer packages plus cross-cutting root modules.
 
-- **Layer packages:** `providers/` (LLM abstraction), `tools/` (one file per tool behind a Protocol + registry), `agent/` (orchestration loop, event-log state, prompt assembly), `tui/` (Textual app + widgets).
-- **Cross-cutting at the root:** `types.py` (shared types), `events.py` (typed `AgentEvent` stream), `composition.py` (composition root: builds the `AppContext`), `cli.py` (entry point), `config.py`, `permissions.py` (policy functions; `ask_each` at v0.1, more modes join the same file as the roadmap lands), `errors.py`, `logging.py`.
+- **Layer packages:** `providers/` (LLM abstraction), `tools/` (one file per tool behind a Protocol + registry), `agent/` (orchestration loop, event-log state, prompt assembly).
+- **Cross-cutting at the root:** `types.py` (shared types), `events.py` (typed `AgentEvent` stream), `composition.py` (composition root: builds the `AppContext`), `cli.py` (entry point), `config.py`, `permissions.py` (policy functions; `ask_each` at v0.1, more modes join the same file as the roadmap lands), `errors.py`, `logging.py`, `repl.py` (rich-rendered output + prompt_toolkit input — the only file that imports either).
 
-Two things the loop produces that everything else consumes: `AgentEvent`s (the streaming output of `agent/loop.py`, consumed by the TUI as an async iterator) and shared domain types (`Message`, `Turn`, `ToolCall`, `ToolResult`). Keep both stable — they are the contract.
+Two things the loop produces that everything else consumes: `AgentEvent`s (the streaming output of `agent/loop.py`, consumed by the REPL as an async iterator) and shared domain types (`Message`, `Turn`, `ToolCall`, `ToolResult`). Keep both stable — they are the contract.
 
 The provider seam **must** support a hand-written `FakeProvider` for tests. Design the interface around that constraint, not around any specific vendor's wire format or SDK shape — most tests run against the fake with no network and no API key.
 
@@ -58,7 +58,7 @@ One PR per logical change (feature, bug fix, refactor, docs update). The user re
 ## Design principles
 
 - **YAGNI is enforced.** Don't pre-build for the post-v0.1 roadmap. Three similar lines is better than a premature abstraction. A registry for three tools is fine; a plugin system for three tools is overengineered.
-- **Isolate I/O at the edges.** `agent/`, `permissions.py`, `types.py`, `events.py`, `errors.py` are pure — no `print`, no file I/O, no network. Side effects live in `tools/`, `providers/`, `tui/`, `config.py`, `logging.py`. This is what makes the agent loop testable with a `FakeProvider`.
+- **Isolate I/O at the edges.** `agent/`, `permissions.py`, `types.py`, `events.py`, `errors.py` are pure — no `print`, no file I/O, no network. Side effects live in `tools/`, `providers/`, `repl.py`, `config.py`, `logging.py`. This is what makes the agent loop testable with a `FakeProvider`.
 - **`typing.Protocol` over base classes.** Layer seams (provider, tool, permission policy) are structural. Avoid ABCs and deep inheritance.
 - **Domain types over primitives.** Give meaningful concepts their own type (`ToolName`, `PermissionDecision`, `Turn`, …). Avoid `dict[str, Any]` at module boundaries — mypy can't help you there.
 - **Flat over nested.** Early returns over `else` ladders; short functions over 50-line bodies. If a function needs scrolling to read, it's doing too much.
@@ -68,7 +68,7 @@ One PR per logical change (feature, bug fix, refactor, docs update). The user re
 Swap a provider, tool, permission policy, or TUI without touching the agent core. The mechanisms:
 
 - **Protocols where there's swappability or a test fake.** `Provider` and `Tool` meet that bar — each has multiple implementations and a dedicated fake. Single-impl concepts (`AppContext`, `Config`, `State`, permission functions) use plain classes / plain functions; promote to Protocol when the second implementation actually appears.
-- **Dependency injection at the composition root.** `composition.py` builds the `AppContext`; `cli.py` invokes it. The agent receives `provider`, `tools`, and a permission-check callable as constructor args. Nothing inside `agent/` or `permissions.py` imports a concrete provider, tool, or UI — the user-prompt is passed in as a callable at composition time.
+- **Dependency injection at the composition root.** `composition.py` builds the `AppContext`; `cli.py` invokes it and hands it to `repl.py`. The agent receives `provider`, `tools`, and a permission-check callable as constructor args. Nothing inside `agent/` or `permissions.py` imports a concrete provider, tool, or UI — the user-prompt is passed in as a callable at composition time.
 - **Stable internal types as the lingua franca.** `Message`, `Turn`, `ToolCall`, `ToolResult` live in `types.py`; `AgentEvent` in `events.py`. Each provider adapts to/from those types at its boundary; the core never sees OpenAI/Anthropic-shaped data.
 - **Registry + name lookup for tools** (and for providers once a second one lands). Registration is one line per new entry; selection is config-driven, not import-driven.
 - **No module-level singletons or globals.** State that outlives a single call belongs in an explicit object threaded through constructors.
@@ -85,7 +85,7 @@ src/termcoder/
 ├── types.py                # Message, Turn, ToolCall, ToolResult, Role
 ├── events.py               # AgentEvent union: TextDelta, ToolCallStart, ToolCallResult, ...
 ├── errors.py               # TermcoderError hierarchy
-├── logging.py              # get_logger wrapper (TUI owns stdout)
+├── logging.py              # get_logger wrapper (REPL owns stdout)
 ├── agent/
 │   ├── __init__.py
 │   ├── loop.py             # async generator: yields AgentEvent
@@ -103,14 +103,7 @@ src/termcoder/
 │   ├── write.py
 │   └── bash.py
 ├── permissions.py          # ask_each at v0.1; allow_list / auto_approve / deny_list join here
-└── tui/
-    ├── __init__.py
-    ├── app.py              # Textual App; only file that imports textual
-    └── widgets/
-        ├── __init__.py
-        ├── transcript.py
-        ├── input.py
-        └── permission_modal.py
+└── repl.py                 # rich for streamed output, prompt_toolkit for input + inline [y/N]; only file that imports either
 
 tests/
 ├── __init__.py
@@ -129,10 +122,10 @@ tests/
 │   └── test_permissions.py
 └── integration/
     ├── test_full_loop.py   # FakeProvider + real tools in tmp_path
-    └── test_tui_smoke.py   # Textual Pilot
+    └── test_repl_smoke.py  # FakeProvider + scripted prompt session
 ```
 
-**Folder rule:** a folder is justified when ≥2 files exist *or will soon exist* that each need real space — distinct imports, distinct test fixtures, or substantive code (typically >50 lines each). Build for known growth, not for speculative plurality. `agent/`, `providers/`, `tools/`, `tui/widgets/` qualify (each future addition is substantial). `permissions.py` doesn't (every mode is a ~10-line function of the same shape). Promote a file to a folder when one entry crosses ~250 lines or holds genuinely unrelated concerns. No `utils/` folder, ever.
+**Folder rule:** a folder is justified when ≥2 files exist *or will soon exist* that each need real space — distinct imports, distinct test fixtures, or substantive code (typically >50 lines each). Build for known growth, not for speculative plurality. `agent/`, `providers/`, `tools/` qualify (each future addition is substantial). `permissions.py` and `repl.py` don't (the modes are ~10-line functions of the same shape; the REPL is a single streaming session with no obvious split). Promote a file to a folder when one entry crosses ~250 lines or holds genuinely unrelated concerns. No `utils/` folder, ever.
 
 ## What not to add
 

@@ -9,7 +9,8 @@ An open-source Python TUI coding agent. Foundation-first: well-structured, exten
 ## Stack
 
 - **Python 3.13**
-- **Textual** — TUI framework
+- **rich** — streamed output (text, markdown, syntax highlighting, styled tool-call/result lines)
+- **prompt_toolkit** — input (line editing, history, async-safe inline `[y/N]` confirms)
 - **OpenAI Python SDK** for the Chat Completions streaming wire; any OpenAI-compatible endpoint works (OpenAI, OpenRouter, Groq, DeepSeek, Together, local llama.cpp/Ollama, …) via `base_url` override. SDK types stay inside `providers/openai_compatible.py` — the agent core sees only our `Message` / `ToolSchema` / `AgentEvent`.
 - **uv** — package + dependency management
 - **pytest** — tests
@@ -25,7 +26,7 @@ See `CLAUDE.md` § Architecture and § Project layout — the single source of t
 - One provider: OpenAI-compatible
 - Three tools: `Read`, `Write`, `Bash`
 - One permission mode: ask-before-each-tool-call
-- Minimal TUI: input box, scrolling transcript, tool-call display
+- Streaming REPL: prompt_toolkit input, rich-rendered assistant text and tool-call/result lines, inline permission confirms
 - Single conversation, no persistence
 - Streaming responses
 
@@ -39,7 +40,7 @@ Goal: fast, deterministic, no API keys required for normal CI.
 
 - **`FakeProvider`** — hand-written test double for the provider interface; returns pre-scripted responses and tool calls. Used to drive the agent loop in tests.
 - **Tools tested in isolation** — `Read`/`Write`/`Bash` use a real `tmp_path` (pytest fixture). No filesystem mocks.
-- **TUI tested with Textual `Pilot`** — keypress/snapshot tests.
+- **REPL tested with a scripted prompt session** — drive multi-turn input + permission decisions without a real terminal.
 - **Integration tests** — full agent loop with `FakeProvider` simulating multi-turn conversations including tool calls.
 - **Real-provider smoke tests** — hand-crafted JSON fixtures of expected responses. Run on-demand / nightly, not on every PR.
 
@@ -50,7 +51,7 @@ This forces the provider seam to be clean (because it must support a fake) and k
 Two tiers:
 
 - **Tool errors are normal LLM input.** File not found, command exits non-zero, permission denied → return the error text as the tool result. Agent sees it, reacts, can retry. The loop does *not* halt.
-- **System errors halt the turn.** Provider unreachable, rate limit, auth failure, internal bug → surface to user via the TUI, pause the loop, user chooses retry/edit/quit.
+- **System errors halt the turn.** Provider unreachable, rate limit, auth failure, internal bug → surface to user in the REPL, pause the loop, user chooses retry/edit/quit.
 - **Ctrl-C** cleanly aborts the current turn and returns to the input prompt.
 
 Rule: distinguish "failures the model should handle" from "failures the user must handle."
@@ -65,7 +66,7 @@ Rule: distinguish "failures the model should handle" from "failures the user mus
 
 ## Definition of done for v0.1
 
-- `uv run termcoder` launches the TUI.
+- `uv run termcoder` launches the interactive REPL.
 - User can ask it to read a file and write a modified version, with per-tool permission prompts.
 - Code is typed (mypy clean), linted (ruff clean), and tested at the layer seams.
 - README explains the architecture and how to add a tool / a provider.
@@ -79,8 +80,8 @@ Roughly one PR per step. Each step lands behind green CI before the next starts.
 - [x] **3. OpenAI-compatible provider.** Real streaming via the OpenAI SDK with `base_url` override, tested with hand-crafted fixtures (not the live API).
 - [x] **4. Tools.** `tools/protocol.py`, `tools/registry.py`, then `read.py`, `write.py`, `bash.py`. Each tested in isolation with `tmp_path`. Errors return as text, not exceptions.
 - [x] **5. Agent loop.** `agent/state.py`, `agent/prompt.py`, `agent/loop.py`, plus `tests/fakes/fake_permission.py` (auto-allow for tests). Integration tests with the FakeProvider + real tools driving multi-turn conversations including tool calls. One test covers mid-stream gating: the model streams a tool call, the loop pauses for the permission callable, then resumes.
-- [x] **6. Headless wiring.** `permissions.py`, `config.py`, `composition.py`, `cli.py`, `logging.py`, plus `__main__.py` and the `[project.scripts]` entry so `uv run termcoder` resolves. End-to-end run via stdin/stdout — no TUI yet, but Ctrl-C cleanly aborts the current turn. Proves the wiring before adding the visible layer.
-- [ ] **7. TUI.** `tui/app.py` and the three widgets (`transcript`, `input`, `permission_modal`). Textual `Pilot` smoke test.
+- [x] **6. Headless wiring.** `permissions.py`, `config.py`, `composition.py`, `cli.py`, `logging.py`, plus `__main__.py` and the `[project.scripts]` entry so `uv run termcoder` resolves. End-to-end run via stdin/stdout — no rich/prompt_toolkit yet, but Ctrl-C cleanly aborts the current turn. Proves the wiring before adding the visible layer.
+- [ ] **7. REPL.** `repl.py` — `rich` renders streamed `TextDelta` in place (via `Live`) and styles tool-call / tool-result lines; `prompt_toolkit` drives input (line editing, history, async-safe) and the inline `[y/N]` permission confirm. `cli.py` switches from the stdin REPL to this. Smoke test: `FakeProvider` + scripted prompt session.
 
 README architecture notes ("how to add a tool / a provider") land in whichever step introduces the seam they describe; a final docs pass after step 7 closes the v0.1 definition of done.
 
