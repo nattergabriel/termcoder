@@ -4,9 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`termcoder` — an open-source TUI coding agent in Python 3.13. Currently pre-v0.1 (scaffolding only).
-
-**Read `PLAN.md` first.** It is the working spec: goal, layered architecture, MVP scope, testing strategy, error-handling philosophy, and configuration model. The plan supersedes this file when they conflict.
+`termcoder` — an open-source TUI coding agent in Python 3.13.
 
 ## Commands
 
@@ -26,7 +24,7 @@ CI (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy 
 
 ## Architecture
 
-> **Source of truth for structure.** This section and **Project layout** below are the only place that describes the codebase's organization. Update them whenever you add, rename, move, or remove a file or folder — and only here. `PLAN.md` deliberately defers to this file so the structure lives in one place.
+> **Source of truth for structure.** This section and **Project layout** below are the only place that describes the codebase's organization. Update them whenever you add, rename, move, or remove a file or folder — and only here.
 
 Briefly: three layer packages plus cross-cutting root modules.
 
@@ -37,11 +35,13 @@ Two things the loop produces that everything else consumes: `AgentEvent`s (the s
 
 The provider seam **must** support a hand-written `FakeProvider` for tests. Design the interface around that constraint, not around any specific vendor's wire format or SDK shape — most tests run against the fake with no network and no API key.
 
+Configuration loads from env (`OPENAI_API_KEY`, `OPENAI_BASE_URL`) for secrets and from TOML for settings, with precedence `.termcoder.toml` (project) > `~/.config/termcoder/config.toml` (user) > built-in defaults.
+
 ## Code style and conventions
 
 - **mypy is strict.** Every function (including tests) needs full type annotations. Don't add `# type: ignore` without a comment explaining why.
 - **No filesystem mocks in tool tests.** Use pytest's `tmp_path` fixture and exercise real I/O.
-- **Tool errors are LLM input, not exceptions.** When a tool fails (file not found, command exits non-zero), return the error text as the tool result so the agent can react. Only let exceptions escape for genuine system failures (provider unreachable, internal bugs).
+- **Tool errors are LLM input, not exceptions.** When a tool fails (file not found, command exits non-zero), return the error text as the tool result so the agent can react. Only let exceptions escape for genuine system failures (provider unreachable, internal bugs) — those halt the turn and surface to the user.
 - **Comments only when the *why* is non-obvious.** Don't paraphrase what the code already says.
 - **Conventional Commits** — `feat:`, `chore:`, `fix:`, `docs:`, `test:`, `refactor:`. Match the style of existing commits.
 
@@ -129,9 +129,8 @@ tests/
 
 ## What not to add
 
-This is a deliberately small foundation. Until v0.1 ships, do not introduce:
+This is a deliberately small foundation. Do not introduce:
 
-- Backwards-compatibility shims, feature flags, or stub interfaces for anything `PLAN.md` defers to post-v0.1.
+- Backwards-compatibility shims, feature flags, or stub interfaces for speculative future work.
 - Sandboxing, telemetry, session persistence, sub-agents, or MCP integration.
-- A docs site (`mkdocs` / `sphinx`). README + PLAN suffice.
-- Long-form prose in `PLAN.md` for things already enforced by tooling (CI config, hook config, license) — keep the plan lean.
+- A docs site (`mkdocs` / `sphinx`). README suffices.
