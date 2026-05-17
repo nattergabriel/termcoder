@@ -1,4 +1,4 @@
-"""TUI: rich-rendered streaming output + prompt_toolkit input.
+"""REPL: rich-rendered streaming output + prompt_toolkit input.
 
 The only module that imports `rich` or `prompt_toolkit`. `Repl` owns a single
 `Console` and a single `PromptSession`; it exposes `confirm_tool` (wired in via
@@ -61,12 +61,20 @@ class Repl:
         # Throwaway history so y/n answers don't pollute the main prompt's Up-arrow recall.
         real_history = self._session.history
         self._session.history = InMemoryHistory()
+        args_preview = (
+            call.arguments if len(call.arguments) <= 120 else call.arguments[:117] + "..."
+        )
         try:
+            # handle_sigint=False stops prompt_toolkit from installing — and then
+            # removing — its own SIGINT handler, which would otherwise wipe out
+            # the turn-cancel handler _cancel_on_sigint set up.
             line = await self._session.prompt_async(
-                f"[permission] {call.name} {call.arguments} — allow? [y/N] "
+                f"[permission] {call.name} {args_preview} — allow? [y/N] ",
+                handle_sigint=False,
             )
         except (KeyboardInterrupt, EOFError):
-            return "deny"
+            # Drop into the existing turn-cancel path so state.truncate runs.
+            raise asyncio.CancelledError from None
         finally:
             self._session.history = real_history
         return "allow" if line.strip().lower() in {"y", "yes"} else "deny"

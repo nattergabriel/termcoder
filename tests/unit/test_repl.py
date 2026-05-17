@@ -1,12 +1,16 @@
 """Unit tests for `Repl` helpers — focused on cancellation wiring."""
 
 import asyncio
+import io
 
 import pytest
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
+from rich.console import Console
 
+from termcoder.events import ToolCallCompleted
 from termcoder.repl import Repl
+from termcoder.types import ToolResult
 
 
 async def test_sigint_handler_only_cancels_active_turn() -> None:
@@ -40,3 +44,18 @@ async def test_sigint_handler_only_cancels_active_turn() -> None:
     finally:
         loop.add_signal_handler = original_add_signal_handler  # type: ignore[method-assign]
         loop.remove_signal_handler = original_remove_signal_handler  # type: ignore[method-assign]
+
+
+async def test_render_escapes_rich_markup_in_tool_output() -> None:
+    """Bracketed tool output (e.g. bash's `[exit 1]`) must not be parsed as Rich markup."""
+    buffer = io.StringIO()
+    console = Console(file=buffer, force_terminal=False, width=80)
+    with create_pipe_input() as pt_input:
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        repl._render(
+            ToolCallCompleted(
+                result=ToolResult(tool_call_id="t1", content="[exit 1] boom", is_error=True),
+            )
+        )
+
+    assert "[exit 1] boom" in buffer.getvalue()
