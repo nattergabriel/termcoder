@@ -7,6 +7,7 @@ without a real terminal.
 """
 
 import io
+from collections.abc import Sequence
 
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
@@ -15,9 +16,12 @@ from rich.console import Console
 from termcoder.agent.loop import Agent
 from termcoder.events import TextDelta, ToolCallRequested
 from termcoder.repl import Repl
+from termcoder.slash_commands import SlashCommand, SlashCommands
 from termcoder.tools.registry import Registry
 from termcoder.types import ToolCall
 from tests.fakes.fake_provider import FakeProvider
+
+_NO_SLASH_COMMANDS = SlashCommands.from_iterable([])
 
 
 async def test_repl_streams_text_and_exits_on_eof() -> None:
@@ -38,7 +42,7 @@ async def test_repl_streams_text_and_exits_on_eof() -> None:
             system_prompt="",
         )
 
-        await repl.run(agent)
+        await repl.run(agent, _NO_SLASH_COMMANDS)
 
     assert "world" in buffer.getvalue()
     # The user's line was the only one sent to the provider.
@@ -71,10 +75,42 @@ async def test_repl_inline_permission_denial_round_trips_back_to_provider() -> N
             system_prompt="",
         )
 
-        await repl.run(agent)
+        await repl.run(agent, _NO_SLASH_COMMANDS)
 
     second_messages = provider.received_calls[1][0]
     tool_message = second_messages[-1]
     assert tool_message.role == "tool"
     assert "denied" in tool_message.content.lower()
     assert "ok, skipped" in buffer.getvalue()
+
+
+async def test_repl_routes_slash_command_instead_of_calling_provider() -> None:
+    """A `/` line invokes the registered slash handler and never reaches the provider."""
+    received: list[Sequence[str]] = []
+
+    async def handle(args: Sequence[str]) -> str:
+        received.append(tuple(args))
+        return "noted"
+
+    slash_commands = SlashCommands.from_iterable([SlashCommand(name="note", handler=handle)])
+
+    with create_pipe_input() as pt_input:
+        pt_input.send_text("/note hello there\n\x04")
+
+        buffer = io.StringIO()
+        console = Console(file=buffer, force_terminal=False, width=80)
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+
+        provider = FakeProvider(scripts=[])
+        agent = Agent(
+            provider=provider,
+            registry=Registry.from_iterable([]),
+            check_permission=repl.confirm_tool,
+            system_prompt="",
+        )
+
+        await repl.run(agent, slash_commands)
+
+    assert received == [("hello", "there")]
+    assert "noted" in buffer.getvalue()
+    assert provider.received_calls == []

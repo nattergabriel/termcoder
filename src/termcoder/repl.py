@@ -38,6 +38,7 @@ from termcoder.events import (
     ToolCallRequested,
     TurnComplete,
 )
+from termcoder.slash_commands import SlashCommandError, SlashCommands
 from termcoder.types import PermissionDecision, ToolCall
 
 
@@ -79,8 +80,8 @@ class Repl:
             self._session.history = real_history
         return "allow" if line.strip().lower() in {"y", "yes"} else "deny"
 
-    async def run(self, agent: Agent) -> None:
-        """Read input, drive a turn, render its events, repeat until EOF."""
+    async def run(self, agent: Agent, slash_commands: SlashCommands) -> None:
+        """Read input, drive a turn (or run a slash command), render events, repeat until EOF."""
         while True:
             try:
                 user_input = await self._session.prompt_async("> ")
@@ -92,6 +93,10 @@ class Repl:
             if not user_input.strip():
                 continue
 
+            if user_input.lstrip().startswith("/"):
+                await self._run_slash(slash_commands, user_input)
+                continue
+
             turn = asyncio.create_task(self._run_turn(agent, user_input))
             try:
                 with self._cancel_on_sigint(turn):
@@ -99,6 +104,14 @@ class Repl:
             except asyncio.CancelledError:
                 self._close_live()
                 self._console.print("[dim]turn cancelled[/dim]")
+
+    async def _run_slash(self, slash_commands: SlashCommands, line: str) -> None:
+        try:
+            message = await slash_commands.dispatch(line)
+        except SlashCommandError as exc:
+            self._console.print(f"[red]{escape(str(exc))}[/red]")
+        else:
+            self._console.print(f"[dim]{escape(message)}[/dim]")
 
     async def _run_turn(self, agent: Agent, user_input: str) -> None:
         try:
