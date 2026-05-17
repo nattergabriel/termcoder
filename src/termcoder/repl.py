@@ -22,10 +22,12 @@ import signal
 from collections.abc import Iterator
 
 from prompt_toolkit import PromptSession
+from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.input import Input
 from prompt_toolkit.output import Output
 from rich.console import Console
 from rich.live import Live
+from rich.markup import escape
 from rich.text import Text
 
 from termcoder.agent.loop import Agent
@@ -56,9 +58,17 @@ class Repl:
 
     async def confirm_tool(self, call: ToolCall) -> PermissionDecision:
         """Inline `[y/N]` permission prompt — wired in as the `prompt_user` callable."""
-        line = await self._session.prompt_async(
-            f"[permission] {call.name} {call.arguments} — allow? [y/N] "
-        )
+        # Throwaway history so y/n answers don't pollute the main prompt's Up-arrow recall.
+        real_history = self._session.history
+        self._session.history = InMemoryHistory()
+        try:
+            line = await self._session.prompt_async(
+                f"[permission] {call.name} {call.arguments} — allow? [y/N] "
+            )
+        except (KeyboardInterrupt, EOFError):
+            return "deny"
+        finally:
+            self._session.history = real_history
         return "allow" if line.strip().lower() in {"y", "yes"} else "deny"
 
     async def run(self, agent: Agent) -> None:
@@ -96,14 +106,14 @@ class Repl:
             case ToolCallRequested():
                 self._close_live()
                 self._console.print(
-                    f"[cyan]→ tool[/cyan] [bold]{event.tool_call.name}[/bold] "
-                    f"{event.tool_call.arguments}"
+                    f"[cyan]→ tool[/cyan] [bold]{escape(event.tool_call.name)}[/bold] "
+                    f"{escape(event.tool_call.arguments)}"
                 )
             case ToolCallCompleted():
                 self._close_live()
                 style = "red" if event.result.is_error else "green"
                 label = "tool-error" if event.result.is_error else "tool-ok"
-                self._console.print(f"[{style}]← {label}[/{style}] {event.result.content}")
+                self._console.print(f"[{style}]← {label}[/{style}] {escape(event.result.content)}")
             case TurnComplete():
                 self._close_live()
 
