@@ -25,22 +25,38 @@ from termcoder.events import (
 from termcoder.types import PermissionDecision, ToolCall
 
 
+def _read_stdin_line() -> str:
+    line = sys.stdin.readline()
+    if not line:
+        raise EOFError
+    return line.removesuffix("\n").removesuffix("\r")
+
+
 async def _read_line(prompt: str) -> str:
     print(prompt, end="", flush=True)
     loop = asyncio.get_running_loop()
+
+    try:
+        fd = sys.stdin.fileno()
+    except (OSError, ValueError):
+        return await asyncio.to_thread(_read_stdin_line)
+
     future: asyncio.Future[str] = loop.create_future()
-    fd = sys.stdin.fileno()
 
     def complete_from_stdin() -> None:
         with contextlib.suppress(ValueError):
             loop.remove_reader(fd)
-        line = sys.stdin.readline()
-        if not line:
-            future.set_exception(EOFError)
+        if future.done():
             return
-        future.set_result(line.removesuffix("\n").removesuffix("\r"))
+        try:
+            future.set_result(_read_stdin_line())
+        except EOFError as exc:
+            future.set_exception(exc)
 
-    loop.add_reader(fd, complete_from_stdin)
+    try:
+        loop.add_reader(fd, complete_from_stdin)
+    except NotImplementedError:
+        return await asyncio.to_thread(_read_stdin_line)
     try:
         return await future
     finally:
