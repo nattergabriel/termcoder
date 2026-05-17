@@ -189,6 +189,8 @@ async def test_provider_forwards_messages_and_tools_then_yields_translated_event
     kwargs = client.chat.completions.last_kwargs
     assert kwargs["model"] == "gpt-4o-mini"
     assert kwargs["stream"] is True
+    assert kwargs["temperature"] == 0.7
+    assert "max_tokens" not in kwargs
     assert kwargs["messages"] == [{"role": "user", "content": "open /a"}]
     assert kwargs["tools"] == [
         {
@@ -211,6 +213,22 @@ async def test_provider_passes_omit_sentinel_for_tools_when_none_provided() -> N
     [_ async for _ in provider.stream([], [])]
 
     assert client.chat.completions.last_kwargs["tools"] is omit
+
+
+async def test_provider_forwards_generation_settings() -> None:
+    client = _FakeClient([_text_chunk("hi")])
+    provider = OpenAICompatibleProvider(
+        client=cast(AsyncOpenAI, client),
+        model="m",
+        temperature=0.2,
+        max_tokens=123,
+    )
+
+    [_ async for _ in provider.stream([], [])]
+
+    kwargs = client.chat.completions.last_kwargs
+    assert kwargs["temperature"] == 0.2
+    assert kwargs["max_tokens"] == 123
 
 
 # --- helpers ------------------------------------------------------------------

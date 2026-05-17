@@ -79,9 +79,9 @@ Swap a provider, tool, permission policy, or TUI without touching the agent core
 src/termcoder/
 ├── __init__.py
 ├── __main__.py             # `python -m termcoder` shortcut
-├── cli.py                  # argv parsing → calls composition → runs
+├── cli.py                  # entry point: calls composition, runs the session loop
 ├── composition.py          # builds the AppContext: wires all deps
-├── config.py               # loading + precedence (CLI > project > user > defaults)
+├── config.py               # loading + precedence (project > user > defaults)
 ├── types.py                # Message, Turn, ToolCall, ToolResult, Role
 ├── events.py               # AgentEvent union: TextDelta, ToolCallStart, ToolCallResult, ...
 ├── errors.py               # TermcoderError hierarchy

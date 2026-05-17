@@ -607,6 +607,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "openai" },
+    { name = "platformdirs" },
 ]
 
 [package.dev-dependencies]
@@ -619,7 +620,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "openai" }]
+requires-dist = [
+    { name = "openai" },
+    { name = "platformdirs" },
+]
 
 [package.metadata.requires-dev]
 dev = [

@@ -12,7 +12,13 @@ import pytest
 
 from termcoder.agent.loop import Agent
 from termcoder.errors import TermcoderError
-from termcoder.events import TextDelta, ToolCallCompleted, ToolCallRequested, TurnComplete
+from termcoder.events import (
+    AgentEvent,
+    TextDelta,
+    ToolCallCompleted,
+    ToolCallRequested,
+    TurnComplete,
+)
 from termcoder.tools.registry import Registry
 from termcoder.types import Message, PermissionDecision, ToolCall, ToolResult
 from tests.fakes.fake_permission import FakePermission
@@ -246,6 +252,47 @@ async def test_loop_blocks_on_permission_callable_before_dispatching_tool() -> N
 
     remaining = [e async for e in gen]
     assert remaining == [TextDelta(text="finished"), TurnComplete()]
+
+
+async def test_cancelled_turn_rolls_back_partial_state() -> None:
+    gate = asyncio.Event()
+    permission_entered = asyncio.Event()
+
+    async def gated_permission(_: ToolCall) -> PermissionDecision:
+        permission_entered.set()
+        await gate.wait()
+        return "allow"
+
+    call = ToolCall(id="c1", name="read", arguments="{}")
+    provider = FakeProvider(
+        scripts=[
+            [ToolCallRequested(tool_call=call)],
+            [TextDelta(text="finished")],
+        ]
+    )
+    agent = Agent(
+        provider=provider,
+        registry=Registry.from_iterable([FakeTool(name="read")]),
+        check_permission=gated_permission,
+        system_prompt="",
+    )
+
+    gen = agent.run_turn("go")
+    first_event = await gen.__anext__()
+    assert first_event == ToolCallRequested(tool_call=call)
+
+    pending: asyncio.Future[AgentEvent] = asyncio.ensure_future(gen.__anext__())
+    await asyncio.wait_for(permission_entered.wait(), timeout=1.0)
+    assert agent.state.messages == (
+        Message(role="user", content="go"),
+        Message(role="assistant", content="", tool_calls=(call,)),
+    )
+
+    pending.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await pending
+
+    assert len(agent.state.messages) == 0
 
 
 async def test_raises_when_max_iterations_exceeded() -> None:

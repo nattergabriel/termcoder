@@ -51,3 +51,15 @@ def test_messages_returns_immutable_snapshot() -> None:
     # The snapshot taken before the second append must not reflect it.
     assert snapshot == (Message(role="user", content="hi"),)
     assert len(state.messages) == 2
+
+
+def test_truncates_to_checkpoint() -> None:
+    state = State()
+    state.append_user("kept")
+    checkpoint = len(state.messages)
+    state.append_user("dropped")
+    state.append_assistant("also dropped")
+
+    state.truncate(checkpoint)
+
+    assert state.messages == (Message(role="user", content="kept"),)

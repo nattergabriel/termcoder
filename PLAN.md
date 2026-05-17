@@ -60,8 +60,7 @@ Rule: distinguish "failures the model should handle" from "failures the user mus
 - **Secrets via env vars**: `OPENAI_API_KEY`, `OPENAI_BASE_URL` (optional — for OpenRouter, local llama.cpp, etc.).
 - **Settings via TOML**: `~/.config/termcoder/config.toml` (paths via `platformdirs` for cross-platform correctness).
 - **Per-project override**: `.termcoder.toml` in the current working directory takes precedence over the user config.
-- **CLI flags** override everything: e.g. `termcoder --model gpt-4o-mini`.
-- **Precedence**: CLI flags > project config > user config > built-in defaults.
+- **Precedence**: project config > user config > built-in defaults. No CLI flags at v0.1 — for a single-session REPL with a handful of settings, env vars + TOML cover persistence and per-shell overrides.
 - **Settings**: `model`, `temperature`, `max_tokens`, `system_prompt`, `permission_mode`.
 
 ## Definition of done for v0.1
