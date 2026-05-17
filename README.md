@@ -19,7 +19,7 @@ The coding-agent space is crowded with strong tools (Claude Code, OpenCode, Aide
 
 ## How it works
 
-A small async loop routes user input to an LLM provider, dispatches tool calls (with permission checks for anything that mutates state), and streams typed events to the Textual TUI. Each layer (provider, tool, permission policy) is a swappable seam behind a `typing.Protocol`, wired together at a single composition root. The core runs against a hand-written `FakeProvider` in tests, so most of the codebase is testable with no network and no API key.
+A small async loop routes user input to an LLM provider, dispatches tool calls (with permission checks for anything that mutates state), and streams typed events to the terminal — rich renders the assistant's output, prompt_toolkit drives input and inline confirms. Each layer (provider, tool, permission policy) is a swappable seam behind a `typing.Protocol`, wired together at a single composition root. The core runs against a hand-written `FakeProvider` in tests, so most of the codebase is testable with no network and no API key.
 
 ## Install (target for v0.1)
 
