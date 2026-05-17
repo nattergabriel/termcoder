@@ -1,0 +1,29 @@
+"""Tests for the tool Registry."""
+
+from termcoder.tools.read import Read
+from termcoder.tools.registry import Registry
+from termcoder.tools.write import Write
+
+
+def test_from_iterable_indexes_tools_by_name() -> None:
+    registry = Registry.from_iterable([Read(), Write()])
+
+    assert registry.get("read").__class__ is Read
+    assert registry.get("write").__class__ is Write
+
+
+def test_get_returns_none_for_unknown_tool() -> None:
+    registry = Registry.from_iterable([Read()])
+
+    assert registry.get("nonexistent") is None
+
+
+def test_schemas_returns_each_tools_schema() -> None:
+    read, write = Read(), Write()
+    registry = Registry.from_iterable([read, write])
+
+    assert list(registry.schemas()) == [read.schema, write.schema]
+
+
+def test_empty_registry_has_no_schemas() -> None:
+    assert Registry().schemas() == ()
