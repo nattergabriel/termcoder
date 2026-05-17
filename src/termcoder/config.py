@@ -4,8 +4,13 @@ Precedence: per-project `.termcoder.toml` (cwd) > user-level config.toml >
 built-in defaults. Secrets (API keys, base URL) live in env vars, never here.
 Unknown keys in the TOML are ignored so the format can grow without breaking
 older clients; type-mismatched values raise `ConfigError`.
+
+`save_setting(...)` writes a single key back to a TOML file (used by slash
+commands like `/model` so changes outlive the session). Comments and blank
+lines in the file are dropped on rewrite — a v0.1 simplification.
 """
 
+import json
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -15,6 +20,8 @@ from typing import Any, Literal
 import platformdirs
 
 from termcoder.errors import TermcoderError
+
+type TomlScalar = str | int | float | bool
 
 type PermissionMode = Literal["ask_each"]
 
@@ -57,6 +64,21 @@ def default_user_config_path() -> Path:
     return Path(platformdirs.user_config_dir("termcoder")) / "config.toml"
 
 
+def save_setting(key: str, value: TomlScalar, *, path: Path) -> None:
+    """Write `key = value` to the TOML file at `path`, preserving other keys.
+
+    Creates the file (and any missing parent directories) if needed. Comments
+    and blank lines in the existing file are not preserved.
+    """
+    raw: dict[str, Any] = {}
+    if path.is_file():
+        with path.open("rb") as f:
+            raw = tomllib.load(f)
+    raw[key] = value
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_serialize_toml(raw), encoding="utf-8")
+
+
 def _from_dict(raw: Mapping[str, Any]) -> Config:
     defaults = Config()
     max_tokens_raw = raw.get("max_tokens", defaults.max_tokens)
@@ -94,3 +116,19 @@ def _as_permission_mode(value: object) -> PermissionMode:
     if value == "ask_each":
         return "ask_each"
     raise ConfigError(f"unknown permission_mode: {value!r}")
+
+
+def _serialize_toml(data: Mapping[str, Any]) -> str:
+    return "".join(f"{key} = {_format_value(value, key)}\n" for key, value in data.items())
+
+
+def _format_value(value: object, field: str) -> str:
+    # bool is a subclass of int — check it first.
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        # JSON basic strings are a valid subset of TOML basic strings.
+        return json.dumps(value)
+    if isinstance(value, int | float):
+        return repr(value)
+    raise ConfigError(f"cannot serialize {field}: unsupported type {type(value).__name__}")
