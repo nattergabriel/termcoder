@@ -17,6 +17,7 @@ import platformdirs
 from termcoder.errors import TermcoderError
 
 type PermissionMode = Literal["ask_each"]
+type ProviderName = Literal["openai", "anthropic"]
 
 
 class ConfigError(TermcoderError):
@@ -25,6 +26,7 @@ class ConfigError(TermcoderError):
 
 @dataclass(frozen=True, slots=True)
 class Config:
+    provider: ProviderName = "openai"
     model: str = "gpt-4o-mini"
     temperature: float = 0.7
     max_tokens: int | None = None
@@ -62,6 +64,7 @@ def _from_dict(raw: Mapping[str, Any]) -> Config:
     max_tokens_raw = raw.get("max_tokens", defaults.max_tokens)
     system_prompt_raw = raw.get("system_prompt", defaults.system_prompt)
     return Config(
+        provider=_as_provider(raw.get("provider", defaults.provider)),
         model=_as_str(raw.get("model", defaults.model), "model"),
         temperature=_as_float(raw.get("temperature", defaults.temperature), "temperature"),
         max_tokens=None if max_tokens_raw is None else _as_int(max_tokens_raw, "max_tokens"),
@@ -94,3 +97,11 @@ def _as_permission_mode(value: object) -> PermissionMode:
     if value == "ask_each":
         return "ask_each"
     raise ConfigError(f"unknown permission_mode: {value!r}")
+
+
+def _as_provider(value: object) -> ProviderName:
+    if value == "openai":
+        return "openai"
+    if value == "anthropic":
+        return "anthropic"
+    raise ConfigError(f"unknown provider: {value!r}")
