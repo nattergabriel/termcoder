@@ -8,9 +8,12 @@ from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
 from rich.console import Console
 
+from termcoder.agent.loop import Agent
 from termcoder.events import TextDelta, ToolCallCompleted, ToolCallRequested, TurnComplete
-from termcoder.models import ToolCall, ToolResult
+from termcoder.models import PermissionDecision, ToolCall, ToolResult
+from termcoder.tools.registry import Registry
 from termcoder.ui.repl import Repl
+from tests.fakes.fake_provider import FakeProvider
 
 
 async def test_sigint_handler_only_cancels_active_turn() -> None:
@@ -76,6 +79,18 @@ async def test_banner_renders_once() -> None:
     assert "─" not in output
 
 
+async def test_banner_uses_registered_command_names() -> None:
+    buffer = io.StringIO()
+    console = Console(file=buffer, force_terminal=False, width=100)
+    with create_pipe_input() as pt_input:
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        repl._render_banner(("note", "status"))
+
+    output = buffer.getvalue()
+    assert "/note /status" in output
+    assert "/model" not in output
+
+
 async def test_assistant_renders_without_message_panel() -> None:
     buffer = io.StringIO()
     console = Console(file=buffer, force_terminal=False, width=100)
@@ -130,6 +145,20 @@ async def test_waiting_spinner_is_replaced_by_assistant_stream() -> None:
     assert "done" in buffer.getvalue()
 
 
+async def test_empty_text_delta_does_not_render_empty_assistant_message() -> None:
+    buffer = io.StringIO()
+    console = Console(file=buffer, force_terminal=False, width=100)
+    with create_pipe_input() as pt_input:
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        repl._start_waiting()
+        repl._render(TextDelta(text=""))
+
+        assert repl._live_mode == "waiting"
+        repl._close_live()
+
+    assert "*" not in buffer.getvalue()
+
+
 async def test_tool_request_renders_compact_command_preview() -> None:
     buffer = io.StringIO()
     console = Console(file=buffer, force_terminal=False, width=100)
@@ -151,6 +180,62 @@ async def test_tool_request_renders_compact_command_preview() -> None:
     assert "tool request" not in output
 
 
+async def test_write_tool_request_summarizes_path_and_content_size() -> None:
+    buffer = io.StringIO()
+    console = Console(file=buffer, force_terminal=False, width=100)
+    with create_pipe_input() as pt_input:
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        repl._render(
+            ToolCallRequested(
+                tool_call=ToolCall(
+                    id="t1",
+                    name="write",
+                    arguments='{"path": "a.py", "content": "abc"}',
+                )
+            )
+        )
+
+    assert "● Write(a.py, 3 characters)" in buffer.getvalue()
+
+
+async def test_permission_prompt_includes_tool_argument_preview() -> None:
+    with create_pipe_input() as pt_input:
+        repl = Repl(input=pt_input, output=DummyOutput())
+
+    prompt = repl._permission_prompt(
+        ToolCall(id="t1", name="bash", arguments='{"command": "rm -rf build"}')
+    )
+
+    assert prompt == "  └ Allow Bash(rm -rf build)? [y/N] "
+
+
+async def test_permission_allow_starts_tool_waiting_spinner() -> None:
+    with create_pipe_input() as pt_input:
+        pt_input.send_text("y\n")
+        repl = Repl(input=pt_input, output=DummyOutput())
+
+        decision = await repl.confirm_tool(
+            ToolCall(id="t1", name="bash", arguments='{"command": "sleep 1"}')
+        )
+
+        assert decision == "allow"
+        assert repl._live_mode == "waiting"
+        repl._close_live()
+
+
+async def test_permission_deny_does_not_start_tool_waiting_spinner() -> None:
+    with create_pipe_input() as pt_input:
+        pt_input.send_text("n\n")
+        repl = Repl(input=pt_input, output=DummyOutput())
+
+        decision = await repl.confirm_tool(
+            ToolCall(id="t1", name="bash", arguments='{"command": "sleep 1"}')
+        )
+
+        assert decision == "deny"
+        assert repl._live_mode is None
+
+
 async def test_tool_output_is_truncated_to_five_lines() -> None:
     buffer = io.StringIO()
     console = Console(file=buffer, force_terminal=False, width=100)
@@ -169,6 +254,57 @@ async def test_tool_output_is_truncated_to_five_lines() -> None:
     assert "line 5" in output
     assert "line 6" not in output
     assert "... 2 more lines" in output
+
+
+async def test_tool_error_preview_keeps_tail_line() -> None:
+    buffer = io.StringIO()
+    console = Console(file=buffer, force_terminal=False, width=100)
+    content = "\n".join([f"line {line}" for line in range(1, 8)])
+    content = f"{content}\n[exit 1]"
+    with create_pipe_input() as pt_input:
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        repl._render(
+            ToolCallCompleted(
+                result=ToolResult(tool_call_id="t1", content=content, is_error=True),
+            )
+        )
+
+    output = buffer.getvalue()
+    assert "line 1" in output
+    assert "line 3" in output
+    assert "line 4" not in output
+    assert "... 4 more lines" in output
+    assert "[exit 1]" in output
+
+
+async def test_pending_tool_display_state_is_cleared_when_turn_is_cancelled() -> None:
+    call = ToolCall(id="t1", name="bash", arguments='{"command": "sleep 60"}')
+    permission_started = asyncio.Event()
+
+    async def wait_for_cancel(_call: ToolCall) -> PermissionDecision:
+        permission_started.set()
+        await asyncio.Event().wait()
+        return "deny"
+
+    buffer = io.StringIO()
+    console = Console(file=buffer, force_terminal=False, width=100)
+    with create_pipe_input() as pt_input:
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        agent = Agent(
+            provider=FakeProvider(scripts=[[ToolCallRequested(tool_call=call)]]),
+            registry=Registry.from_iterable([]),
+            check_permission=wait_for_cancel,
+            system_prompt="",
+        )
+        task = asyncio.create_task(repl._run_turn(agent, "run it"))
+        await permission_started.wait()
+
+        assert repl._tool_calls == {"t1": call}
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    assert repl._tool_calls == {}
 
 
 async def test_tool_result_adds_spacing_before_followup_assistant_text() -> None:

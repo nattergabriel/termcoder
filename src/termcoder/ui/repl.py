@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import json
 import signal
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Literal
 
 from prompt_toolkit import PromptSession
@@ -25,7 +25,7 @@ from termcoder.events import (
     ToolCallRequested,
     TurnComplete,
 )
-from termcoder.models import PermissionDecision, ToolCall
+from termcoder.models import PermissionDecision, ToolCall, ToolResult
 
 
 class Repl:
@@ -56,18 +56,21 @@ class Repl:
         try:
             # Preserve the SIGINT handler installed for turn cancellation.
             line = await self._session.prompt_async(
-                f"  └ Allow {self._tool_display_name(call.name)}? [y/N] ",
+                self._permission_prompt(call),
                 handle_sigint=False,
             )
         except (KeyboardInterrupt, EOFError):
             raise asyncio.CancelledError from None
         finally:
             self._session.history = real_history
-        return "allow" if line.strip().lower() in {"y", "yes"} else "deny"
+        allowed = line.strip().lower() in {"y", "yes"}
+        if allowed:
+            self._start_waiting("running tool")
+        return "allow" if allowed else "deny"
 
     async def run(self, agent: Agent, slash_commands: SlashCommands) -> None:
         """Run until EOF."""
-        self._render_banner()
+        self._render_banner(slash_commands.names())
         while True:
             try:
                 user_input = await self._session.prompt_async("you > ")
@@ -107,6 +110,7 @@ class Repl:
                 self._render(event)
         finally:
             self._close_live()
+            self._tool_calls.clear()
 
     def _render(self, event: AgentEvent) -> None:
         match event:
@@ -118,18 +122,22 @@ class Repl:
                 self._console.print(self._tool_request_text(event.tool_call))
             case ToolCallCompleted():
                 self._close_live()
-                tool_call = self._tool_calls.pop(event.result.tool_call_id, None)
-                style = "red" if event.result.is_error else "green"
-                label = self._tool_result_label(
-                    tool_call, event.result.content, event.result.is_error
+                call = self._tool_calls.pop(event.result.tool_call_id, None)
+                self._console.print(
+                    self._tool_result_text(
+                        self._tool_result_heading(call, event.result),
+                        event.result.content,
+                        "red" if event.result.is_error else "green",
+                        preserve_tail=event.result.is_error,
+                    )
                 )
-                heading = self._tool_result_heading(tool_call, label)
-                self._console.print(self._tool_result_text(heading, event.result.content, style))
                 self._print_blank_line()
             case TurnComplete():
                 self._close_live(spacing_after_assistant=True)
 
     def _append_text(self, chunk: str) -> None:
+        if not chunk:
+            return
         if self._live_mode == "waiting":
             self._close_live()
         self._buffer += chunk
@@ -157,11 +165,11 @@ class Repl:
         self._live_mode = None
         self._buffer = ""
 
-    def _start_waiting(self) -> None:
+    def _start_waiting(self, label: str = "thinking") -> None:
         if self._live is not None:
             return
         self._live = Live(
-            Spinner("dots", text=Text("thinking", style="dim")),
+            Spinner("dots", text=Text(label, style="dim")),
             console=self._console,
             refresh_per_second=12,
             transient=True,
@@ -169,7 +177,7 @@ class Repl:
         self._live_mode = "waiting"
         self._live.start()
 
-    def _render_banner(self) -> None:
+    def _render_banner(self, command_names: Sequence[str] = ()) -> None:
         if self._banner_rendered:
             return
         banner = Text()
@@ -178,16 +186,15 @@ class Repl:
         banner.append("TUI coding agent", style="bright_black")
         banner.append("\n")
         banner.append("Ctrl-D exits | Ctrl-C cancels a turn", style="dim")
-        banner.append("\n")
-        banner.append("/model /provider /temperature", style="dim")
+        if command_names:
+            banner.append("\n")
+            banner.append(self._slash_command_summary(command_names), style="dim")
         self._console.print(banner)
         self._print_blank_line()
         self._banner_rendered = True
 
     def _assistant_text(self, content: str) -> Text:
-        text = Text()
-        text.append(self._prefix_lines(content, first="* ", rest="  "))
-        return text
+        return Text(self._prefix_lines(content, first="* ", rest="  "))
 
     def _tool_request_text(self, call: ToolCall) -> Text:
         text = Text()
@@ -195,11 +202,21 @@ class Repl:
         text.append(self._tool_summary(call), style="bold")
         return text
 
-    def _tool_result_text(self, label: str, content: str, style: str) -> Text:
+    def _permission_prompt(self, call: ToolCall) -> str:
+        return f"  └ Allow {self._tool_summary(call)}? [y/N] "
+
+    def _tool_result_text(
+        self,
+        label: str,
+        content: str,
+        style: str,
+        *,
+        preserve_tail: bool = False,
+    ) -> Text:
         text = Text()
         text.append("  └ ", style="bright_black")
         text.append(label, style=style)
-        preview = self._line_preview(content, max_lines=5)
+        preview = self._line_preview(content, max_lines=5, preserve_tail=preserve_tail)
         if preview:
             text.append("\n")
             text.append(
@@ -216,26 +233,19 @@ class Repl:
     def _print_blank_line(self) -> None:
         self._console.print("")
 
-    def _tool_result_label(
-        self,
-        call: ToolCall | None,
-        content: str,
-        is_error: bool,
-    ) -> str:
-        if is_error:
-            return "Tool failed"
-
-        if call is not None and call.name == "read":
-            line_count = len(content.splitlines())
-            noun = "line" if line_count == 1 else "lines"
-            return f"Read {line_count} {noun}"
-
-        return "Tool completed"
-
-    def _tool_result_heading(self, call: ToolCall | None, label: str) -> str:
+    def _tool_result_heading(self, call: ToolCall | None, result: ToolResult) -> str:
+        label = self._tool_result_label(call, result)
         if call is None:
             return label
         return f"{self._tool_summary(call)}: {label}"
+
+    def _tool_result_label(self, call: ToolCall | None, result: ToolResult) -> str:
+        if result.is_error:
+            return "Tool failed"
+        if call is not None and call.name == "read":
+            count = len(result.content.splitlines())
+            return f"Read {self._pluralize(count, 'line')}"
+        return "Tool completed"
 
     def _tool_summary(self, call: ToolCall) -> str:
         summary = self._tool_display_name(call.name)
@@ -262,6 +272,9 @@ class Repl:
 
         path = parsed.get("path")
         if isinstance(path, str):
+            content = parsed.get("content")
+            if isinstance(content, str):
+                return self._single_line_preview(f"{path}, {self._character_count(content)}")
             return self._single_line_preview(path)
 
         return self._single_line_preview(arguments)
@@ -272,13 +285,30 @@ class Repl:
             return preview
         return preview[: max_length - 3] + "..."
 
-    def _line_preview(self, content: str, *, max_lines: int) -> str:
+    def _line_preview(self, content: str, *, max_lines: int, preserve_tail: bool = False) -> str:
         lines = content.splitlines()
         if len(lines) <= max_lines:
             return content
-        visible = lines[:max_lines]
         hidden = len(lines) - max_lines
-        return "\n".join([*visible, f"... {hidden} more lines"])
+        if preserve_tail and max_lines >= 3:
+            head_count = max_lines - 2
+            hidden = len(lines) - head_count - 1
+            return "\n".join([*lines[:head_count], self._hidden_line(hidden), lines[-1]])
+        return "\n".join([*lines[:max_lines], self._hidden_line(hidden)])
+
+    def _slash_command_summary(self, command_names: Sequence[str]) -> str:
+        return " ".join(f"/{name}" for name in command_names)
+
+    def _character_count(self, content: str) -> str:
+        return self._pluralize(len(content), "character")
+
+    def _hidden_line(self, count: int) -> str:
+        noun = "line" if count == 1 else "lines"
+        return f"... {count} more {noun}"
+
+    def _pluralize(self, count: int, noun: str) -> str:
+        suffix = "" if count == 1 else "s"
+        return f"{count} {noun}{suffix}"
 
     def _prefix_lines(self, content: str, *, first: str, rest: str) -> str:
         lines = content.splitlines(keepends=True)
