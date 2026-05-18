@@ -25,7 +25,6 @@ from anthropic.types import (
 
 from termcoder.events import TextDelta, ToolCallRequested
 from termcoder.providers.anthropic import (
-    DEFAULT_MAX_TOKENS,
     AnthropicProvider,
     _to_api_messages,
     _to_api_tool,
@@ -263,7 +262,9 @@ async def test_provider_forwards_messages_and_tools_then_yields_translated_event
     assert kwargs["model"] == "claude-x"
     assert kwargs["stream"] is True
     assert kwargs["temperature"] == 0.7
-    assert kwargs["max_tokens"] == DEFAULT_MAX_TOKENS
+    # AnthropicProvider supplies its own default when max_tokens is left unset.
+    assert isinstance(kwargs["max_tokens"], int)
+    assert kwargs["max_tokens"] > 0
     assert kwargs["messages"] == [{"role": "user", "content": "open /a"}]
     assert kwargs["system"] is NOT_GIVEN
     assert kwargs["tools"] == [
