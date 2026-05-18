@@ -1,9 +1,7 @@
-"""System-prompt assembly — pure, side-effect free.
+"""System-prompt assembly.
 
-Kept deliberately small at v0.1: a single base instruction with an optional
-user-supplied addendum. The tool catalog is advertised separately via the
-provider, so we don't repeat it here. Grow the inputs (cwd, project notes,
-etc.) only when a concrete need lands.
+The tool catalog is advertised separately via the provider, so it isn't
+repeated here.
 """
 
 DEFAULT_SYSTEM_PROMPT = (

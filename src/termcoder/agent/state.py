@@ -1,9 +1,7 @@
-"""Conversation state — the running message log fed back to the provider on each round.
+"""Append-only conversation log.
 
-Append-only by design: every user input, assistant turn, and tool result lands
-here in order. The provider sees `messages` on each `stream()` call; the TUI
-can render the same list as a transcript. No partials live here — the loop
-finalizes each assistant message (text + tool calls) before appending it.
+The loop finalizes each assistant message (text + tool calls) before appending
+it, so no partials are ever in flight here.
 """
 
 from collections.abc import Iterable, Sequence
