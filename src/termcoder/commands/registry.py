@@ -1,13 +1,8 @@
-"""Slash commands: user-typed REPL directives like `/model gpt-4o-mini`.
+"""Slash-command dispatch for user-typed REPL directives like `/model gpt-4o-mini`.
 
-The REPL intercepts any prompt line that starts with `/` and routes it here
-instead of sending it to the agent. Each command is a small async function
-bound at composition time to whatever mutable state it acts on (the provider,
-later: the config, the session, ...).
-
-Commands return a user-facing string for the REPL to print on success and
-raise `SlashCommandError` for any user-facing failure (unknown command,
-missing argument, bad value). Anything else propagates as a system error.
+Concrete commands live in sibling modules and register as small, bound handlers.
+The registry only parses the command name, routes to the handler, and normalizes
+user-facing errors as `SlashCommandError`.
 """
 
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
@@ -39,7 +34,11 @@ class SlashCommands:
 
     @classmethod
     def from_iterable(cls, commands: Iterable[SlashCommand]) -> "SlashCommands":
-        return cls(commands={c.name: c for c in commands})
+        items = tuple(commands)
+        indexed = {c.name: c for c in items}
+        if len(indexed) != len(items):
+            raise SlashCommandError("duplicate slash command name")
+        return cls(commands=indexed)
 
     async def dispatch(self, line: str) -> str:
         """Parse a `/name args...` line and run its handler, returning the result message."""

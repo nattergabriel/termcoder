@@ -24,13 +24,13 @@ from anthropic.types import (
 )
 
 from termcoder.events import TextDelta, ToolCallRequested
+from termcoder.models import Message, ToolCall, ToolSchema
 from termcoder.providers.anthropic import (
     AnthropicProvider,
     _split_system_and_convert,
     _to_api_tool,
     _translate,
 )
-from termcoder.types import Message, ToolCall, ToolSchema
 
 # --- translation tests --------------------------------------------------------
 

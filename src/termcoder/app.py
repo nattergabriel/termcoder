@@ -1,4 +1,4 @@
-"""Composition root — wires every layer together.
+"""Application composition root.
 
 Reads `Config`, selects the provider via `providers.registry.build_provider`,
 builds the tool registry and permission policy, then assembles the `Agent`.
@@ -6,23 +6,24 @@ The agent and permission layers never import a concrete provider, tool, or
 UI — everything they need arrives as constructor args here.
 """
 
-from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from typing import assert_never
 
 from termcoder.agent.loop import Agent
 from termcoder.agent.prompt import assemble_system_prompt
-from termcoder.config import Config, default_user_config_path, save_setting
+from termcoder.commands.context import CommandContext
+from termcoder.commands.model import model_command
+from termcoder.commands.provider import provider_command
+from termcoder.commands.registry import SlashCommands
+from termcoder.commands.temperature import temperature_command
+from termcoder.config import Config, default_user_config_path
+from termcoder.models import PermissionCheck
 from termcoder.permissions import PromptUser, ask_each
-from termcoder.providers.protocol import Provider
 from termcoder.providers.registry import build_provider
-from termcoder.slash_commands import SlashCommand, SlashCommandError, SlashCommands
 from termcoder.tools.bash import Bash
 from termcoder.tools.read import Read
 from termcoder.tools.registry import Registry
 from termcoder.tools.write import Write
-from termcoder.types import PermissionCheck
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,8 +45,17 @@ def build(config: Config, prompt_user: PromptUser) -> AppContext:
         system_prompt=assemble_system_prompt(config.system_prompt),
         max_iterations=config.max_iterations,
     )
+    command_context = CommandContext(
+        agent=agent,
+        config=config,
+        save_path=default_user_config_path(),
+    )
     slash_commands = SlashCommands.from_iterable(
-        [_model_command(provider, default_user_config_path())]
+        [
+            model_command(command_context),
+            provider_command(command_context),
+            temperature_command(command_context),
+        ]
     )
     return AppContext(agent=agent, config=config, slash_commands=slash_commands)
 
@@ -54,17 +64,3 @@ def _permission_check(config: Config, prompt_user: PromptUser) -> PermissionChec
     if config.permission_mode == "ask_each":
         return ask_each(prompt_user)
     assert_never(config.permission_mode)
-
-
-def _model_command(provider: Provider, save_path: Path) -> SlashCommand:
-    """`/model <name>` — swap the live provider's model and persist to `save_path`."""
-
-    async def handle(args: Sequence[str]) -> str:
-        if len(args) != 1:
-            raise SlashCommandError("usage: /model <name>")
-        name = args[0]
-        provider.model = name
-        save_setting("model", name, path=save_path)
-        return f"model set to {name} (persisted to {save_path})"
-
-    return SlashCommand(name="model", handler=handle)

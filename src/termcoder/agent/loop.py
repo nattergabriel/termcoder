@@ -18,9 +18,9 @@ from termcoder.events import (
     ToolCallRequested,
     TurnComplete,
 )
+from termcoder.models import Message, PermissionCheck, ToolCall, ToolResult
 from termcoder.providers.protocol import Provider
 from termcoder.tools.registry import Registry
-from termcoder.types import Message, PermissionCheck, ToolCall, ToolResult
 
 
 @dataclass

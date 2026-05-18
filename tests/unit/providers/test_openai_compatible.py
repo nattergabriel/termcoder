@@ -21,13 +21,13 @@ from openai.types.chat.chat_completion_chunk import (
 )
 
 from termcoder.events import TextDelta, ToolCallRequested
+from termcoder.models import Message, ToolCall, ToolSchema
 from termcoder.providers.openai_compatible import (
     OpenAICompatibleProvider,
     _to_api_message,
     _to_api_tool,
     _translate,
 )
-from termcoder.types import Message, ToolCall, ToolSchema
 
 # --- translation tests --------------------------------------------------------
 

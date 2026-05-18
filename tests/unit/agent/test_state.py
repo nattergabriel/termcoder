@@ -5,7 +5,7 @@ each appender produces and that order is preserved.
 """
 
 from termcoder.agent.state import State
-from termcoder.types import Message, ToolCall, ToolResult
+from termcoder.models import Message, ToolCall, ToolResult
 
 
 def test_starts_empty() -> None:

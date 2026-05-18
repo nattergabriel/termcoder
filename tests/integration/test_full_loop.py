@@ -10,11 +10,11 @@ from pathlib import Path
 
 from termcoder.agent.loop import Agent
 from termcoder.events import TextDelta, ToolCallCompleted, ToolCallRequested, TurnComplete
+from termcoder.models import ToolCall
 from termcoder.tools.bash import Bash
 from termcoder.tools.read import Read
 from termcoder.tools.registry import Registry
 from termcoder.tools.write import Write
-from termcoder.types import ToolCall
 from tests.fakes.fake_permission import FakePermission
 from tests.fakes.fake_provider import FakeProvider
 

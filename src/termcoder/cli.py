@@ -3,9 +3,9 @@
 import asyncio
 import contextlib
 
-from termcoder.composition import build
+from termcoder.app import build
 from termcoder.config import load_config
-from termcoder.repl import Repl
+from termcoder.ui.repl import Repl
 
 
 def main() -> None:

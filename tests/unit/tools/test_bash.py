@@ -5,8 +5,8 @@ defeat the point of the tool.
 import asyncio
 import json
 
+from termcoder.models import ToolCall
 from termcoder.tools.bash import Bash
-from termcoder.types import ToolCall
 
 
 async def test_captures_stdout_and_exit_zero() -> None:

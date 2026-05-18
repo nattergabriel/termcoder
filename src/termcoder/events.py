@@ -7,7 +7,7 @@ System errors are raised through the async generator, not yielded as events.
 
 from dataclasses import dataclass
 
-from termcoder.types import ToolCall, ToolResult
+from termcoder.models import ToolCall, ToolResult
 
 
 @dataclass(frozen=True, slots=True)

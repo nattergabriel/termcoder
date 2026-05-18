@@ -9,8 +9,8 @@ from prompt_toolkit.output import DummyOutput
 from rich.console import Console
 
 from termcoder.events import ToolCallCompleted
-from termcoder.repl import Repl
-from termcoder.types import ToolResult
+from termcoder.models import ToolResult
+from termcoder.ui.repl import Repl
 
 
 async def test_sigint_handler_only_cancels_active_turn() -> None:

@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 
 from termcoder.events import AgentEvent
-from termcoder.types import Message, ToolSchema
+from termcoder.models import Message, ToolSchema
 
 
 @dataclass
@@ -22,6 +22,7 @@ class FakeProvider:
 
     scripts: list[list[AgentEvent]]
     model: str = "fake-model"
+    temperature: float = 0.7
     received_calls: list[tuple[tuple[Message, ...], tuple[ToolSchema, ...]]] = field(
         default_factory=list
     )

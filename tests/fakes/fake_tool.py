@@ -8,7 +8,7 @@ valid object schema; tests can override when they care.
 
 from dataclasses import dataclass, field
 
-from termcoder.types import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 
 
 @dataclass

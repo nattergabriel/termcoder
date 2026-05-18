@@ -7,7 +7,7 @@ come back as a `ToolResult` with `is_error=True`.
 import json
 from pathlib import Path
 
-from termcoder.types import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 
 
 class Write:

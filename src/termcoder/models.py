@@ -5,7 +5,7 @@ types at their boundary; the agent core only ever sees these shapes.
 """
 
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 type Role = Literal["system", "user", "assistant", "tool"]
@@ -56,16 +56,6 @@ class Message:
     content: str
     tool_calls: tuple[ToolCall, ...] = ()
     tool_call_id: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class Turn:
-    """A user input plus every assistant/tool message produced in response.
-
-    Derived from the agent's event log; consumed by the TUI as a transcript group.
-    """
-
-    messages: tuple[Message, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)

@@ -8,7 +8,7 @@ the agent loop tests in step 5 start depending on it.
 import pytest
 
 from termcoder.events import TextDelta, TurnComplete
-from termcoder.types import Message, ToolSchema
+from termcoder.models import Message, ToolSchema
 from tests.fakes.fake_provider import FakeProvider
 
 

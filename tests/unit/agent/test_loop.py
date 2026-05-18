@@ -20,8 +20,8 @@ from termcoder.events import (
     ToolCallRequested,
     TurnComplete,
 )
+from termcoder.models import Message, PermissionDecision, ToolCall, ToolResult, ToolSchema
 from termcoder.tools.registry import Registry
-from termcoder.types import Message, PermissionDecision, ToolCall, ToolResult, ToolSchema
 from tests.fakes.fake_permission import FakePermission
 from tests.fakes.fake_provider import FakeProvider
 from tests.fakes.fake_tool import FakeTool
@@ -325,6 +325,7 @@ async def test_provider_error_mid_stream_rolls_back_partial_state() -> None:
 
     class ExplodingProvider:
         model = "boom"
+        temperature = 0.7
 
         async def stream(
             self,

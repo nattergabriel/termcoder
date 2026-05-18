@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from termcoder.slash_commands import (
+from termcoder.commands.registry import (
     SlashCommand,
     SlashCommandError,
     SlashCommands,
@@ -43,6 +43,16 @@ async def test_dispatch_unknown_command_raises() -> None:
 
     with pytest.raises(SlashCommandError, match="/nope"):
         await commands.dispatch("/nope")
+
+
+def test_duplicate_command_names_raise() -> None:
+    with pytest.raises(SlashCommandError, match="duplicate"):
+        SlashCommands.from_iterable(
+            [
+                SlashCommand(name="same", handler=_record([]).handler),
+                SlashCommand(name="same", handler=_record([]).handler),
+            ]
+        )
 
 
 async def test_dispatch_empty_slash_raises() -> None:

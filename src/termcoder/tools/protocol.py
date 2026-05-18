@@ -11,7 +11,7 @@ crashing) propagate.
 
 from typing import Protocol
 
-from termcoder.types import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 
 
 class Tool(Protocol):
