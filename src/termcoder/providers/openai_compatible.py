@@ -5,10 +5,12 @@ SDK's wire shapes. Every `openai.*` import stays inside this module; the agent
 core never sees vendor types.
 
 The configured `base_url` on the `AsyncOpenAI` client determines which endpoint
-gets called (OpenAI, OpenRouter, Groq, local llama.cpp, …). That wiring lives
-in the composition root; this module just adapts the protocol.
+gets called (OpenAI, OpenRouter, Groq, local llama.cpp, …). `from_config`
+reads `OPENAI_API_KEY` and `OPENAI_BASE_URL` from the environment so
+secrets stay outside the TOML config.
 """
 
+import os
 from collections.abc import AsyncIterable, AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Any, assert_never
@@ -16,6 +18,7 @@ from typing import Any, assert_never
 from openai import AsyncOpenAI, Omit, omit
 from openai.types.chat import ChatCompletionChunk
 
+from termcoder.config import Config
 from termcoder.events import AgentEvent, TextDelta, ToolCallRequested
 from termcoder.types import Message, ToolCall, ToolSchema
 
@@ -122,3 +125,16 @@ def _to_api_tool(schema: ToolSchema) -> dict[str, Any]:
             "parameters": schema.parameters,
         },
     }
+
+
+def from_config(config: Config) -> OpenAICompatibleProvider:
+    """Build the provider from `Config` plus the standard env-var secrets."""
+    return OpenAICompatibleProvider(
+        client=AsyncOpenAI(
+            api_key=os.environ.get("OPENAI_API_KEY"),
+            base_url=os.environ.get("OPENAI_BASE_URL"),
+        ),
+        model=config.model,
+        temperature=config.temperature,
+        max_tokens=config.max_tokens,
+    )

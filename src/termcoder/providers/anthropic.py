@@ -2,10 +2,13 @@
 
 Translates between our `Message` / `ToolSchema` / `AgentEvent` types and the
 Anthropic SDK's wire shapes. Every `anthropic.*` import stays inside this
-module; the agent core never sees vendor types.
+module; the agent core never sees vendor types. `from_config` reads
+`ANTHROPIC_API_KEY` from the environment so secrets stay outside the TOML
+config.
 """
 
 import json
+import os
 from collections.abc import AsyncIterable, AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Any, assert_never
@@ -13,6 +16,7 @@ from typing import Any, assert_never
 from anthropic import NOT_GIVEN, AsyncAnthropic, NotGiven
 from anthropic.types import RawMessageStreamEvent
 
+from termcoder.config import Config
 from termcoder.events import AgentEvent, TextDelta, ToolCallRequested
 from termcoder.types import Message, ToolCall, ToolSchema
 
@@ -157,3 +161,13 @@ def _to_api_tool(schema: ToolSchema) -> dict[str, Any]:
         "description": schema.description,
         "input_schema": schema.parameters,
     }
+
+
+def from_config(config: Config) -> AnthropicProvider:
+    """Build the provider from `Config` plus the standard env-var secrets."""
+    return AnthropicProvider(
+        client=AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")),
+        model=config.model,
+        temperature=config.temperature,
+        max_tokens=config.max_tokens if config.max_tokens is not None else DEFAULT_MAX_TOKENS,
+    )
