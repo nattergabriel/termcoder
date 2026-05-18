@@ -39,6 +39,7 @@ class Config:
     max_tokens: int | None = None
     system_prompt: str | None = None
     permission_mode: PermissionMode = "ask_each"
+    max_iterations: int = 25
 
 
 def load_config(
@@ -94,6 +95,9 @@ def _from_dict(raw: Mapping[str, Any]) -> Config:
             None if system_prompt_raw is None else _as_str(system_prompt_raw, "system_prompt")
         ),
         permission_mode=_as_permission_mode(raw.get("permission_mode", defaults.permission_mode)),
+        max_iterations=_as_int(
+            raw.get("max_iterations", defaults.max_iterations), "max_iterations"
+        ),
     )
 
 

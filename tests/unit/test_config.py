@@ -99,6 +99,30 @@ def test_wrong_type_raises(tmp_path: Path) -> None:
         load_config(cwd=tmp_path, user_config_path=user_path)
 
 
+def test_max_iterations_default_when_omitted(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'model = "x"\n')
+
+    config = load_config(cwd=tmp_path, user_config_path=user_path)
+    assert config.max_iterations == Config().max_iterations
+
+
+def test_max_iterations_overrides(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, "max_iterations = 100\n")
+
+    config = load_config(cwd=tmp_path, user_config_path=user_path)
+    assert config.max_iterations == 100
+
+
+def test_max_iterations_wrong_type_raises(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'max_iterations = "lots"\n')
+
+    with pytest.raises(ConfigError, match="max_iterations"):
+        load_config(cwd=tmp_path, user_config_path=user_path)
+
+
 def test_save_setting_creates_file_and_round_trips(tmp_path: Path) -> None:
     path = tmp_path / "nested" / "config.toml"
 
