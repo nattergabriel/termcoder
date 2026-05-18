@@ -15,7 +15,6 @@ def test_starts_empty() -> None:
 def test_appends_each_role_with_correct_shape() -> None:
     state = State()
 
-    state.append_system("sys")
     state.append_user("hi")
     state.append_assistant(
         "thinking...",
@@ -24,7 +23,6 @@ def test_appends_each_role_with_correct_shape() -> None:
     state.append_tool_result(ToolResult(tool_call_id="c1", content="file body"))
 
     assert state.messages == (
-        Message(role="system", content="sys"),
         Message(role="user", content="hi"),
         Message(
             role="assistant",

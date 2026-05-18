@@ -22,9 +22,6 @@ class State:
     def messages(self) -> Sequence[Message]:
         return tuple(self._messages)
 
-    def append_system(self, content: str) -> None:
-        self._messages.append(Message(role="system", content=content))
-
     def append_user(self, content: str) -> None:
         self._messages.append(Message(role="user", content=content))
 
