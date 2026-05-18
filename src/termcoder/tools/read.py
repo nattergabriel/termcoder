@@ -1,8 +1,4 @@
-"""Read tool — return the contents of a UTF-8 text file at the given path.
-
-Missing files, non-UTF-8 content, and permission errors come back as a
-`ToolResult` with `is_error=True` so the model can react.
-"""
+"""Read tool."""
 
 from pathlib import Path
 

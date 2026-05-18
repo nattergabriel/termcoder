@@ -1,8 +1,4 @@
-"""Agent loop — drives the provider, dispatches tools, gates each call on permission.
-
-System errors (provider unreachable, registry bugs) raise; tool failures and
-denials surface as `ToolResult(is_error=True)` so the model can react.
-"""
+"""Agent loop."""
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -33,7 +29,7 @@ class Agent:
     state: State = field(default_factory=State)
     system_prompt: str = field(default_factory=assemble_system_prompt)
     max_iterations: int = 25
-    """Cap on provider rounds per turn — stops runaway tool-call loops."""
+    """Cap on provider rounds per turn."""
 
     async def run_turn(self, user_input: str) -> AsyncIterator[AgentEvent]:
         checkpoint = len(self.state.messages)
@@ -53,8 +49,7 @@ class Agent:
                             tool_calls.append(event.tool_call)
                             yield event
                         case ToolCallCompleted() | TurnComplete():
-                            # Loop-owned events; a provider emitting them is a contract
-                            # violation, not a routine event.
+                            # These events are emitted by the loop, not providers.
                             raise TermcoderError(f"provider emitted unexpected event: {event!r}")
                         case _:
                             assert_never(event)
@@ -74,9 +69,7 @@ class Agent:
                 f"agent exceeded max_iterations={self.max_iterations} without completing the turn"
             )
         except BaseException:
-            # Any abnormal exit — cancellation, provider error, max_iterations,
-            # generator close — leaves a half-finished turn in the log. Roll
-            # state back to the checkpoint so the next turn starts clean.
+            # Drop partial turn state after cancellation or failure.
             self.state.truncate(checkpoint)
             raise
 

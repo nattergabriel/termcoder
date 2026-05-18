@@ -1,9 +1,4 @@
-"""Tool registry — name lookup and schema export.
-
-Built once at the composition root from the concrete `Tool` instances; the
-agent loop queries by name when dispatching tool calls and pulls all schemas
-to advertise the catalog to the provider.
-"""
+"""Tool registry."""
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
@@ -14,7 +9,7 @@ from termcoder.tools.protocol import Tool
 
 @dataclass(slots=True)
 class Registry:
-    """`ToolName` → `Tool` map with helpers for the two access patterns we have."""
+    """Tool lookup by name."""
 
     tools: dict[ToolName, Tool] = field(default_factory=dict)
 

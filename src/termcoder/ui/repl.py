@@ -1,20 +1,4 @@
-"""REPL: rich-rendered streaming output + prompt_toolkit input.
-
-The only module that imports `rich` or `prompt_toolkit`. `Repl` owns a single
-`Console` and a single `PromptSession`; it exposes `confirm_tool` (wired in via
-composition as the permission prompt) and `run(agent)` (the session loop).
-
-Rendering: assistant `TextDelta`s stream into a `rich.live.Live` block that
-re-renders in place as each chunk arrives. The Live closes on any non-text
-event so tool-call lines and the permission prompt can use the cursor cleanly,
-then reopens on the next `TextDelta`. Tool calls and results render as styled
-single lines.
-
-Cancellation: at the prompt, prompt_toolkit raises `KeyboardInterrupt` on
-Ctrl-C — we catch it and re-prompt. Mid-turn, a SIGINT handler cancels the
-running task; the agent loop catches `CancelledError` and rolls back state.
-Ctrl-D raises `EOFError`, which exits the session.
-"""
+"""Terminal REPL."""
 
 import asyncio
 import contextlib
@@ -43,7 +27,7 @@ from termcoder.models import PermissionDecision, ToolCall
 
 
 class Repl:
-    """rich + prompt_toolkit session driving the agent loop."""
+    """Interactive terminal session."""
 
     def __init__(
         self,
@@ -58,30 +42,27 @@ class Repl:
         self._buffer = ""
 
     async def confirm_tool(self, call: ToolCall) -> PermissionDecision:
-        """Inline `[y/N]` permission prompt — wired in as the `prompt_user` callable."""
-        # Throwaway history so y/n answers don't pollute the main prompt's Up-arrow recall.
+        """Prompt for a tool-call permission decision."""
+        # Keep y/n answers out of the main prompt history.
         real_history = self._session.history
         self._session.history = InMemoryHistory()
         args_preview = (
             call.arguments if len(call.arguments) <= 120 else call.arguments[:117] + "..."
         )
         try:
-            # handle_sigint=False stops prompt_toolkit from installing — and then
-            # removing — its own SIGINT handler, which would otherwise wipe out
-            # the turn-cancel handler _cancel_on_sigint set up.
+            # Preserve the SIGINT handler installed for turn cancellation.
             line = await self._session.prompt_async(
                 f"[permission] {call.name} {args_preview} — allow? [y/N] ",
                 handle_sigint=False,
             )
         except (KeyboardInterrupt, EOFError):
-            # Drop into the existing turn-cancel path so state.truncate runs.
             raise asyncio.CancelledError from None
         finally:
             self._session.history = real_history
         return "allow" if line.strip().lower() in {"y", "yes"} else "deny"
 
     async def run(self, agent: Agent, slash_commands: SlashCommands) -> None:
-        """Read input, drive a turn (or run a slash command), render events, repeat until EOF."""
+        """Run until EOF."""
         while True:
             try:
                 user_input = await self._session.prompt_async("> ")

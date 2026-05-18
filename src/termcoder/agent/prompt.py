@@ -1,8 +1,4 @@
-"""System-prompt assembly.
-
-The tool catalog is advertised separately via the provider, so it isn't
-repeated here.
-"""
+"""System-prompt assembly."""
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are termcoder, a terminal-based coding assistant. "

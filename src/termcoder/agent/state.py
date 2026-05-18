@@ -1,8 +1,4 @@
-"""Append-only conversation log.
-
-The loop finalizes each assistant message (text + tool calls) before appending
-it, so no partials are ever in flight here.
-"""
+"""Conversation log."""
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
@@ -12,7 +8,7 @@ from termcoder.models import Message, ToolCall, ToolResult
 
 @dataclass(slots=True)
 class State:
-    """The conversation log: every message exchanged so far, in order."""
+    """Messages exchanged so far."""
 
     _messages: list[Message] = field(default_factory=list)
 

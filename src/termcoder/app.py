@@ -1,10 +1,4 @@
-"""Application composition root.
-
-Reads `Config`, selects the provider via `providers.registry.build_provider`,
-builds the tool registry and permission policy, then assembles the `Agent`.
-The agent and permission layers never import a concrete provider, tool, or
-UI — everything they need arrives as constructor args here.
-"""
+"""Application composition root."""
 
 from dataclasses import dataclass
 from typing import assert_never
@@ -28,7 +22,7 @@ from termcoder.tools.write import Write
 
 @dataclass(frozen=True, slots=True)
 class AppContext:
-    """A ready-to-run session: the agent, its config, and the slash-command registry."""
+    """Runtime objects for one REPL session."""
 
     agent: Agent
     config: Config
