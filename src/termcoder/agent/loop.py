@@ -6,6 +6,7 @@ denials surface as `ToolResult(is_error=True)` so the model can react.
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from typing import assert_never
 
 from termcoder.agent.prompt import assemble_system_prompt
 from termcoder.agent.state import State
@@ -51,10 +52,12 @@ class Agent:
                         case ToolCallRequested():
                             tool_calls.append(event.tool_call)
                             yield event
-                        case _:
-                            # ToolCallCompleted / TurnComplete are loop-owned; a provider
-                            # yielding them is a contract violation, not a routine event.
+                        case ToolCallCompleted() | TurnComplete():
+                            # Loop-owned events; a provider emitting them is a contract
+                            # violation, not a routine event.
                             raise TermcoderError(f"provider emitted unexpected event: {event!r}")
+                        case _:
+                            assert_never(event)
 
                 self.state.append_assistant(assistant_text, tool_calls)
 
