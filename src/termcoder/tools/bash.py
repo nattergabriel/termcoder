@@ -6,9 +6,9 @@ sees both the output and the exit status.
 """
 
 import asyncio
-import json
 
 from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.tools.arguments import ArgumentError, parse_object, required_string
 
 
 class Bash:
@@ -32,18 +32,12 @@ class Bash:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = json.loads(call.arguments)
-            command = args["command"]
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            args = parse_object(call)
+            command = required_string(args, "command")
+        except ArgumentError as exc:
             return ToolResult(
                 tool_call_id=call.id,
                 content=f"invalid arguments: {exc}",
-                is_error=True,
-            )
-        if not isinstance(command, str):
-            return ToolResult(
-                tool_call_id=call.id,
-                content="invalid arguments: 'command' must be a string",
                 is_error=True,
             )
 

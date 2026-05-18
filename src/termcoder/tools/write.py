@@ -4,10 +4,10 @@ Parent directories must already exist; missing-parent and permission errors
 come back as a `ToolResult` with `is_error=True`.
 """
 
-import json
 from pathlib import Path
 
 from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.tools.arguments import ArgumentError, parse_object, required_string
 
 
 class Write:
@@ -33,10 +33,10 @@ class Write:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = json.loads(call.arguments)
-            path = args["path"]
-            content = args["content"]
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            args = parse_object(call)
+            path = required_string(args, "path")
+            content = required_string(args, "content")
+        except ArgumentError as exc:
             return ToolResult(
                 tool_call_id=call.id,
                 content=f"invalid arguments: {exc}",
