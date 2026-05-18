@@ -69,7 +69,7 @@ Swap a provider, tool, permission policy, or TUI without touching the agent core
 - **Protocols where there's swappability or a test fake.** `Provider` and `Tool` meet that bar — each has multiple implementations and a dedicated fake. Single-impl concepts (`AppContext`, `Config`, `State`, permission functions) use plain classes / plain functions; promote to Protocol when the second implementation actually appears.
 - **Dependency injection at the composition root.** `composition.py` builds the `AppContext`; `cli.py` invokes it and hands it to `repl.py`. The agent receives `provider`, `tools`, and a permission-check callable as constructor args. Nothing inside `agent/` or `permissions.py` imports a concrete provider, tool, or UI — the user-prompt is passed in as a callable at composition time.
 - **Stable internal types as the lingua franca.** `Message`, `Turn`, `ToolCall`, `ToolResult` live in `types.py`; `AgentEvent` in `events.py`. Each provider adapts to/from those types at its boundary; the core never sees OpenAI/Anthropic-shaped data.
-- **Registry + name lookup for tools** (and for providers once a second one lands). Registration is one line per new entry; selection is config-driven, not import-driven.
+- **Registry + name lookup for tools and providers.** Registration is one line per new entry; selection is config-driven, not import-driven.
 - **No module-level singletons or globals.** State that outlives a single call belongs in an explicit object threaded through constructors.
 
 ## Project layout
@@ -94,6 +94,7 @@ src/termcoder/
 ├── providers/
 │   ├── __init__.py
 │   ├── protocol.py         # Provider Protocol
+│   ├── registry.py         # ProviderName → factory, one entry per backend
 │   ├── openai_compatible.py
 │   └── anthropic.py        # one file per backend
 ├── tools/
