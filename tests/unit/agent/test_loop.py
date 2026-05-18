@@ -7,6 +7,7 @@ awaits the permission callable before dispatching a tool.
 """
 
 import asyncio
+from collections.abc import AsyncIterator, Sequence
 
 import pytest
 
@@ -20,7 +21,7 @@ from termcoder.events import (
     TurnComplete,
 )
 from termcoder.tools.registry import Registry
-from termcoder.types import Message, PermissionDecision, ToolCall, ToolResult
+from termcoder.types import Message, PermissionDecision, ToolCall, ToolResult, ToolSchema
 from tests.fakes.fake_permission import FakePermission
 from tests.fakes.fake_provider import FakeProvider
 from tests.fakes.fake_tool import FakeTool
@@ -317,3 +318,31 @@ async def test_raises_when_max_iterations_exceeded() -> None:
     with pytest.raises(TermcoderError, match="max_iterations=2"):
         async for _ in agent.run_turn("loop forever"):
             pass
+
+
+async def test_provider_error_mid_stream_rolls_back_partial_state() -> None:
+    """A provider that raises mid-turn must not leave a dangling user message."""
+
+    class ExplodingProvider:
+        model = "boom"
+
+        async def stream(
+            self,
+            messages: Sequence[Message],
+            tools: Sequence[ToolSchema],
+        ) -> AsyncIterator[AgentEvent]:
+            yield TextDelta(text="partial ")
+            raise RuntimeError("network died")
+
+    agent = Agent(
+        provider=ExplodingProvider(),
+        registry=Registry(),
+        check_permission=FakePermission(),
+        system_prompt="",
+    )
+
+    with pytest.raises(RuntimeError, match="network died"):
+        async for _ in agent.run_turn("ask something"):
+            pass
+
+    assert agent.state.messages == ()
