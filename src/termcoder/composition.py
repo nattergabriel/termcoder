@@ -42,6 +42,7 @@ def build(config: Config, prompt_user: PromptUser) -> AppContext:
         registry=registry,
         check_permission=_permission_check(config, prompt_user),
         system_prompt=assemble_system_prompt(config.system_prompt),
+        max_iterations=config.max_iterations,
     )
     slash_commands = SlashCommands.from_iterable(
         [_model_command(provider, default_user_config_path())]
