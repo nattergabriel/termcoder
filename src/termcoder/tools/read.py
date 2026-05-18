@@ -4,10 +4,10 @@ Missing files, non-UTF-8 content, and permission errors come back as a
 `ToolResult` with `is_error=True` so the model can react.
 """
 
-import json
 from pathlib import Path
 
 from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.tools.arguments import ArgumentError, parse_object, required_string
 
 
 class Read:
@@ -29,9 +29,9 @@ class Read:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = json.loads(call.arguments)
-            path = args["path"]
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            args = parse_object(call)
+            path = required_string(args, "path")
+        except ArgumentError as exc:
             return ToolResult(
                 tool_call_id=call.id,
                 content=f"invalid arguments: {exc}",
