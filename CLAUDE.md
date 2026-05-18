@@ -29,13 +29,13 @@ CI (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy 
 Briefly: three layer packages plus cross-cutting root modules.
 
 - **Layer packages:** `providers/` (LLM abstraction), `tools/` (one file per tool behind a Protocol + registry), `agent/` (orchestration loop, event-log state, prompt assembly).
-- **Cross-cutting at the root:** `types.py` (shared types), `events.py` (typed `AgentEvent` stream), `composition.py` (composition root: builds the `AppContext`), `cli.py` (entry point), `config.py`, `permissions.py` (policy functions; `ask_each` at v0.1, more modes join the same file as the roadmap lands), `errors.py`, `logging.py`, `repl.py` (rich-rendered output + prompt_toolkit input — the only file that imports either).
+- **Cross-cutting at the root:** `types.py` (shared types), `events.py` (typed `AgentEvent` stream), `composition.py` (composition root: builds the `AppContext`), `cli.py` (entry point), `config.py`, `permissions.py` (policy functions; `ask_each` at v0.1, more modes join the same file as the roadmap lands), `slash_commands.py` (registry + dispatch for `/`-prefixed REPL directives), `errors.py`, `logging.py`, `repl.py` (rich-rendered output + prompt_toolkit input — the only file that imports either).
 
 Two things the loop produces that everything else consumes: `AgentEvent`s (the streaming output of `agent/loop.py`, consumed by the REPL as an async iterator) and shared domain types (`Message`, `Turn`, `ToolCall`, `ToolResult`). Keep both stable — they are the contract.
 
 The provider seam **must** support a hand-written `FakeProvider` for tests. Design the interface around that constraint, not around any specific vendor's wire format or SDK shape — most tests run against the fake with no network and no API key.
 
-Configuration loads from env (`OPENAI_API_KEY`, `OPENAI_BASE_URL`) for secrets and from TOML for settings, with precedence `.termcoder.toml` (project) > `~/.config/termcoder/config.toml` (user) > built-in defaults.
+Configuration loads from env (`OPENAI_API_KEY`, `OPENAI_BASE_URL`, `ANTHROPIC_API_KEY`) for secrets and from TOML for settings, with precedence `.termcoder.toml` (project) > `~/.config/termcoder/config.toml` (user) > built-in defaults.
 
 ## Code style and conventions
 
@@ -85,6 +85,7 @@ src/termcoder/
 ├── events.py               # AgentEvent union: TextDelta, ToolCallStart, ToolCallResult, ...
 ├── errors.py               # TermcoderError hierarchy
 ├── logging.py              # get_logger wrapper (REPL owns stdout)
+├── slash_commands.py       # `/model …` etc.: registry + dispatch; handlers bound at composition
 ├── agent/
 │   ├── __init__.py
 │   ├── loop.py             # async generator: yields AgentEvent
@@ -93,7 +94,8 @@ src/termcoder/
 ├── providers/
 │   ├── __init__.py
 │   ├── protocol.py         # Provider Protocol
-│   └── openai_compatible.py  # v0.1 has one provider; add registry.py when a second lands
+│   ├── openai_compatible.py
+│   └── anthropic.py        # one file per backend
 ├── tools/
 │   ├── __init__.py
 │   ├── protocol.py         # Tool Protocol
