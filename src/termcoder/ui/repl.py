@@ -2,8 +2,10 @@
 
 import asyncio
 import contextlib
+import json
 import signal
 from collections.abc import Iterator
+from typing import Literal
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import InMemoryHistory
@@ -11,7 +13,7 @@ from prompt_toolkit.input import Input
 from prompt_toolkit.output import Output
 from rich.console import Console
 from rich.live import Live
-from rich.markup import escape
+from rich.spinner import Spinner
 from rich.text import Text
 
 from termcoder.agent.loop import Agent
@@ -29,6 +31,8 @@ from termcoder.models import PermissionDecision, ToolCall
 class Repl:
     """Interactive terminal session."""
 
+    _LiveMode = Literal["waiting", "assistant"]
+
     def __init__(
         self,
         *,
@@ -39,20 +43,20 @@ class Repl:
         self._console = console or Console()
         self._session: PromptSession[str] = PromptSession(input=input, output=output)
         self._live: Live | None = None
+        self._live_mode: Repl._LiveMode | None = None
         self._buffer = ""
+        self._banner_rendered = False
+        self._tool_calls: dict[str, ToolCall] = {}
 
     async def confirm_tool(self, call: ToolCall) -> PermissionDecision:
         """Prompt for a tool-call permission decision."""
         # Keep y/n answers out of the main prompt history.
         real_history = self._session.history
         self._session.history = InMemoryHistory()
-        args_preview = (
-            call.arguments if len(call.arguments) <= 120 else call.arguments[:117] + "..."
-        )
         try:
             # Preserve the SIGINT handler installed for turn cancellation.
             line = await self._session.prompt_async(
-                f"[permission] {call.name} {args_preview} — allow? [y/N] ",
+                f"  └ Allow {self._tool_display_name(call.name)}? [y/N] ",
                 handle_sigint=False,
             )
         except (KeyboardInterrupt, EOFError):
@@ -63,9 +67,10 @@ class Repl:
 
     async def run(self, agent: Agent, slash_commands: SlashCommands) -> None:
         """Run until EOF."""
+        self._render_banner()
         while True:
             try:
-                user_input = await self._session.prompt_async("> ")
+                user_input = await self._session.prompt_async("you > ")
             except EOFError:
                 return
             except KeyboardInterrupt:
@@ -78,6 +83,7 @@ class Repl:
                 await self._run_slash(slash_commands, user_input)
                 continue
 
+            self._print_blank_line()
             turn = asyncio.create_task(self._run_turn(agent, user_input))
             try:
                 with self._cancel_on_sigint(turn):
@@ -90,12 +96,13 @@ class Repl:
         try:
             message = await slash_commands.dispatch(line)
         except SlashCommandError as exc:
-            self._console.print(f"[red]{escape(str(exc))}[/red]")
+            self._console.print(self._status_text("command error", str(exc), "red"))
         else:
-            self._console.print(f"[dim]{escape(message)}[/dim]")
+            self._console.print(self._status_text("command", message, "bright_black"))
 
     async def _run_turn(self, agent: Agent, user_input: str) -> None:
         try:
+            self._start_waiting()
             async for event in agent.run_turn(user_input):
                 self._render(event)
         finally:
@@ -106,38 +113,182 @@ class Repl:
             case TextDelta():
                 self._append_text(event.text)
             case ToolCallRequested():
-                self._close_live()
-                self._console.print(
-                    f"[cyan]→ tool[/cyan] [bold]{escape(event.tool_call.name)}[/bold] "
-                    f"{escape(event.tool_call.arguments)}"
-                )
+                self._close_live(spacing_after_assistant=True)
+                self._tool_calls[event.tool_call.id] = event.tool_call
+                self._console.print(self._tool_request_text(event.tool_call))
             case ToolCallCompleted():
                 self._close_live()
+                tool_call = self._tool_calls.pop(event.result.tool_call_id, None)
                 style = "red" if event.result.is_error else "green"
-                label = "tool-error" if event.result.is_error else "tool-ok"
-                self._console.print(f"[{style}]← {label}[/{style}] {escape(event.result.content)}")
+                label = self._tool_result_label(
+                    tool_call, event.result.content, event.result.is_error
+                )
+                heading = self._tool_result_heading(tool_call, label)
+                self._console.print(self._tool_result_text(heading, event.result.content, style))
+                self._print_blank_line()
             case TurnComplete():
-                self._close_live()
+                self._close_live(spacing_after_assistant=True)
 
     def _append_text(self, chunk: str) -> None:
+        if self._live_mode == "waiting":
+            self._close_live()
         self._buffer += chunk
         if self._live is None:
             self._live = Live(
-                Text(self._buffer),
+                self._assistant_text(self._buffer),
                 console=self._console,
                 refresh_per_second=20,
                 transient=False,
             )
+            self._live_mode = "assistant"
             self._live.start()
         else:
-            self._live.update(Text(self._buffer))
+            self._live.update(self._assistant_text(self._buffer))
 
-    def _close_live(self) -> None:
+    def _close_live(self, *, spacing_after_assistant: bool = False) -> None:
         if self._live is None:
             return
+        if spacing_after_assistant and self._live_mode == "assistant":
+            rendered = self._assistant_text(self._buffer)
+            rendered.append("\n")
+            self._live.update(rendered)
         self._live.stop()
         self._live = None
+        self._live_mode = None
         self._buffer = ""
+
+    def _start_waiting(self) -> None:
+        if self._live is not None:
+            return
+        self._live = Live(
+            Spinner("dots", text=Text("thinking", style="dim")),
+            console=self._console,
+            refresh_per_second=12,
+            transient=True,
+        )
+        self._live_mode = "waiting"
+        self._live.start()
+
+    def _render_banner(self) -> None:
+        if self._banner_rendered:
+            return
+        banner = Text()
+        banner.append("termcoder", style="bold cyan")
+        banner.append("  ")
+        banner.append("TUI coding agent", style="bright_black")
+        banner.append("\n")
+        banner.append("Ctrl-D exits | Ctrl-C cancels a turn", style="dim")
+        banner.append("\n")
+        banner.append("/model /provider /temperature", style="dim")
+        self._console.print(banner)
+        self._print_blank_line()
+        self._banner_rendered = True
+
+    def _assistant_text(self, content: str) -> Text:
+        text = Text()
+        text.append(self._prefix_lines(content, first="* ", rest="  "))
+        return text
+
+    def _tool_request_text(self, call: ToolCall) -> Text:
+        text = Text()
+        text.append("● ", style="green")
+        text.append(self._tool_summary(call), style="bold")
+        return text
+
+    def _tool_result_text(self, label: str, content: str, style: str) -> Text:
+        text = Text()
+        text.append("  └ ", style="bright_black")
+        text.append(label, style=style)
+        preview = self._line_preview(content, max_lines=5)
+        if preview:
+            text.append("\n")
+            text.append(
+                self._prefix_lines(preview, first="    ", rest="    "), style="bright_black"
+            )
+        return text
+
+    def _status_text(self, label: str, content: str, style: str) -> Text:
+        text = Text()
+        text.append(f"* {label}: ", style=style)
+        text.append(content)
+        return text
+
+    def _print_blank_line(self) -> None:
+        self._console.print("")
+
+    def _tool_result_label(
+        self,
+        call: ToolCall | None,
+        content: str,
+        is_error: bool,
+    ) -> str:
+        if is_error:
+            return "Tool failed"
+
+        if call is not None and call.name == "read":
+            line_count = len(content.splitlines())
+            noun = "line" if line_count == 1 else "lines"
+            return f"Read {line_count} {noun}"
+
+        return "Tool completed"
+
+    def _tool_result_heading(self, call: ToolCall | None, label: str) -> str:
+        if call is None:
+            return label
+        return f"{self._tool_summary(call)}: {label}"
+
+    def _tool_summary(self, call: ToolCall) -> str:
+        summary = self._tool_display_name(call.name)
+        preview = self._argument_preview(call.arguments)
+        if not preview:
+            return summary
+        return f"{summary}({preview})"
+
+    def _tool_display_name(self, name: str) -> str:
+        return name.replace("_", " ").title().replace(" ", "")
+
+    def _argument_preview(self, arguments: str) -> str:
+        try:
+            parsed: object = json.loads(arguments)
+        except json.JSONDecodeError:
+            return self._single_line_preview(arguments)
+
+        if not isinstance(parsed, dict):
+            return self._single_line_preview(arguments)
+
+        command = parsed.get("command")
+        if isinstance(command, str):
+            return self._single_line_preview(command)
+
+        path = parsed.get("path")
+        if isinstance(path, str):
+            return self._single_line_preview(path)
+
+        return self._single_line_preview(arguments)
+
+    def _single_line_preview(self, content: str, *, max_length: int = 120) -> str:
+        preview = " ".join(content.splitlines()).strip()
+        if len(preview) <= max_length:
+            return preview
+        return preview[: max_length - 3] + "..."
+
+    def _line_preview(self, content: str, *, max_lines: int) -> str:
+        lines = content.splitlines()
+        if len(lines) <= max_lines:
+            return content
+        visible = lines[:max_lines]
+        hidden = len(lines) - max_lines
+        return "\n".join([*visible, f"... {hidden} more lines"])
+
+    def _prefix_lines(self, content: str, *, first: str, rest: str) -> str:
+        lines = content.splitlines(keepends=True)
+        if not lines:
+            return first
+        prefixed = []
+        for index, line in enumerate(lines):
+            prefix = first if index == 0 else rest
+            prefixed.append(prefix + line)
+        return "".join(prefixed)
 
     @contextlib.contextmanager
     def _cancel_on_sigint(self, task: asyncio.Task[None]) -> Iterator[None]:
