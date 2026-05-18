@@ -1,18 +1,5 @@
 """Agent loop — drives the provider, dispatches tools, gates each call on permission.
 
-`Agent.run_turn(user_input)` is an async generator that:
-
-1. appends the user input to `State`,
-2. streams events from the provider, yielding `TextDelta` / `ToolCallRequested`
-   to the caller as they arrive,
-3. once the provider stream finishes, commits the assistant message to `State`,
-4. if tool calls were requested, awaits the permission callable for each one,
-   dispatches via the registry (or builds an error `ToolResult` for denials and
-   unknown tools), commits each result to `State`, yields `ToolCallCompleted`,
-5. loops back to step 2 with the tool results in the conversation,
-6. yields `TurnComplete` and returns once an assistant message arrives with no
-   tool calls.
-
 System errors (provider unreachable, registry bugs) raise; tool failures and
 denials surface as `ToolResult(is_error=True)` so the model can react.
 """
