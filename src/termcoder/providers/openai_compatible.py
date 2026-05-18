@@ -1,13 +1,10 @@
 """OpenAI Chat Completions streaming provider — works with any compatible endpoint.
 
-Translates between our `Message` / `ToolSchema` / `AgentEvent` types and the OpenAI
-SDK's wire shapes. Every `openai.*` import stays inside this module; the agent
-core never sees vendor types.
-
 The configured `base_url` on the `AsyncOpenAI` client determines which endpoint
-gets called (OpenAI, OpenRouter, Groq, local llama.cpp, …). `from_config`
-reads `OPENAI_API_KEY` and `OPENAI_BASE_URL` from the environment so
-secrets stay outside the TOML config.
+gets called (OpenAI, OpenRouter, Groq, local llama.cpp, …). Every `openai.*`
+import stays inside this module; the agent core never sees vendor types.
+`from_config` reads `OPENAI_API_KEY` and `OPENAI_BASE_URL` from the environment
+so secrets stay outside the TOML config.
 """
 
 import os
@@ -25,11 +22,9 @@ from termcoder.types import Message, ToolCall, ToolSchema
 
 @dataclass
 class OpenAICompatibleProvider:
-    """Streams `AgentEvent`s from the OpenAI Chat Completions API."""
-
     client: AsyncOpenAI
     model: str
-    temperature: float = 0.7
+    temperature: float
     max_tokens: int | None = None
 
     async def stream(
@@ -39,16 +34,14 @@ class OpenAICompatibleProvider:
     ) -> AsyncIterator[AgentEvent]:
         api_messages: list[Any] = [_to_api_message(m) for m in messages]
         api_tools: list[Any] | Omit = [_to_api_tool(t) for t in tools] if tools else omit
-        kwargs: dict[str, Any] = {
-            "model": self.model,
-            "messages": api_messages,
-            "tools": api_tools,
-            "stream": True,
-            "temperature": self.temperature,
-        }
-        if self.max_tokens is not None:
-            kwargs["max_tokens"] = self.max_tokens
-        chunks = await self.client.chat.completions.create(**kwargs)
+        chunks = await self.client.chat.completions.create(
+            model=self.model,
+            messages=api_messages,
+            tools=api_tools,
+            stream=True,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens if self.max_tokens is not None else omit,
+        )
         async for event in _translate(chunks):
             yield event
 
@@ -96,6 +89,7 @@ def _to_api_message(msg: Message) -> dict[str, Any]:
     if msg.role == "system" or msg.role == "user":
         return {"role": msg.role, "content": msg.content}
     if msg.role == "assistant":
+        # OpenAI requires `null`, not `""`, when an assistant message carries only tool_calls.
         result: dict[str, Any] = {"role": "assistant", "content": msg.content or None}
         if msg.tool_calls:
             result["tool_calls"] = [
@@ -128,7 +122,6 @@ def _to_api_tool(schema: ToolSchema) -> dict[str, Any]:
 
 
 def from_config(config: Config) -> OpenAICompatibleProvider:
-    """Build the provider from `Config` plus the standard env-var secrets."""
     return OpenAICompatibleProvider(
         client=AsyncOpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),

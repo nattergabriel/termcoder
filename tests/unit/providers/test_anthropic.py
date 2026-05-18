@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from typing import cast
 
-from anthropic import NOT_GIVEN, AsyncAnthropic
+from anthropic import AsyncAnthropic, omit
 from anthropic.types import (
     InputJSONDelta,
     RawContentBlockDeltaEvent,
@@ -26,7 +26,7 @@ from anthropic.types import (
 from termcoder.events import TextDelta, ToolCallRequested
 from termcoder.providers.anthropic import (
     AnthropicProvider,
-    _to_api_messages,
+    _split_system_and_convert,
     _to_api_tool,
     _translate,
 )
@@ -108,7 +108,7 @@ async def test_ignores_text_block_stop() -> None:
 
 
 def test_extracts_leading_system_message() -> None:
-    system, msgs = _to_api_messages(
+    system, msgs = _split_system_and_convert(
         [
             Message(role="system", content="be helpful"),
             Message(role="user", content="hi"),
@@ -120,7 +120,7 @@ def test_extracts_leading_system_message() -> None:
 
 
 def test_joins_multiple_system_messages_with_blank_line() -> None:
-    system, _ = _to_api_messages(
+    system, _ = _split_system_and_convert(
         [
             Message(role="system", content="be helpful"),
             Message(role="system", content="be terse"),
@@ -132,7 +132,7 @@ def test_joins_multiple_system_messages_with_blank_line() -> None:
 
 
 def test_converts_assistant_text_message() -> None:
-    _, msgs = _to_api_messages([Message(role="assistant", content="sure")])
+    _, msgs = _split_system_and_convert([Message(role="assistant", content="sure")])
 
     assert msgs == [{"role": "assistant", "content": [{"type": "text", "text": "sure"}]}]
 
@@ -144,7 +144,7 @@ def test_converts_assistant_message_with_tool_calls() -> None:
         tool_calls=(ToolCall(id="call_1", name="read", arguments='{"path": "x"}'),),
     )
 
-    _, msgs = _to_api_messages([msg])
+    _, msgs = _split_system_and_convert([msg])
 
     assert msgs == [
         {
@@ -169,7 +169,7 @@ def test_assistant_with_tool_calls_only_omits_empty_text_block() -> None:
         tool_calls=(ToolCall(id="c1", name="read", arguments="{}"),),
     )
 
-    _, msgs = _to_api_messages([msg])
+    _, msgs = _split_system_and_convert([msg])
 
     assert msgs == [
         {
@@ -197,7 +197,7 @@ def test_collapses_adjacent_tool_messages_into_one_user_turn() -> None:
         Message(role="user", content="thanks"),
     ]
 
-    _, msgs = _to_api_messages(msgs_in)
+    _, msgs = _split_system_and_convert(msgs_in)
 
     assert msgs == [
         {"role": "user", "content": "run tools"},
@@ -248,7 +248,9 @@ async def test_provider_forwards_messages_and_tools_then_yields_translated_event
             _block_stop(index=1),
         ]
     )
-    provider = AnthropicProvider(client=cast(AsyncAnthropic, client), model="claude-x")
+    provider = AnthropicProvider(
+        client=cast(AsyncAnthropic, client), model="claude-x", temperature=0.7
+    )
     msg = Message(role="user", content="open /a")
     schema = ToolSchema(name="read", description="read", parameters={"type": "object"})
 
@@ -266,7 +268,7 @@ async def test_provider_forwards_messages_and_tools_then_yields_translated_event
     assert isinstance(kwargs["max_tokens"], int)
     assert kwargs["max_tokens"] > 0
     assert kwargs["messages"] == [{"role": "user", "content": "open /a"}]
-    assert kwargs["system"] is NOT_GIVEN
+    assert kwargs["system"] is omit
     assert kwargs["tools"] == [
         {
             "name": "read",
@@ -278,7 +280,7 @@ async def test_provider_forwards_messages_and_tools_then_yields_translated_event
 
 async def test_provider_pulls_system_message_into_top_level_kwarg() -> None:
     client = _FakeClient([_text_delta("hi")])
-    provider = AnthropicProvider(client=cast(AsyncAnthropic, client), model="m")
+    provider = AnthropicProvider(client=cast(AsyncAnthropic, client), model="m", temperature=0.7)
 
     [_ async for _ in provider.stream([Message(role="system", content="be terse")], [])]
 
@@ -289,11 +291,11 @@ async def test_provider_pulls_system_message_into_top_level_kwarg() -> None:
 
 async def test_provider_passes_not_given_for_tools_when_none_provided() -> None:
     client = _FakeClient([_text_delta("hi")])
-    provider = AnthropicProvider(client=cast(AsyncAnthropic, client), model="m")
+    provider = AnthropicProvider(client=cast(AsyncAnthropic, client), model="m", temperature=0.7)
 
     [_ async for _ in provider.stream([], [])]
 
-    assert client.messages.last_kwargs["tools"] is NOT_GIVEN
+    assert client.messages.last_kwargs["tools"] is omit
 
 
 async def test_provider_forwards_generation_settings() -> None:

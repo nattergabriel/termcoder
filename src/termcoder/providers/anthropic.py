@@ -13,26 +13,22 @@ from collections.abc import AsyncIterable, AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Any, assert_never
 
-from anthropic import NOT_GIVEN, AsyncAnthropic, NotGiven
+from anthropic import AsyncAnthropic, Omit, omit
 from anthropic.types import RawMessageStreamEvent
 
 from termcoder.config import Config
 from termcoder.events import AgentEvent, TextDelta, ToolCallRequested
 from termcoder.types import Message, ToolCall, ToolSchema
 
-# Anthropic requires `max_tokens` on every request; this is the fallback when
-# Config leaves it unset. Kept private — composition passes `config.max_tokens`
-# through and the provider applies the default internally.
+# Anthropic requires `max_tokens` on every request; used when Config leaves it unset.
 _DEFAULT_MAX_TOKENS = 4096
 
 
 @dataclass
 class AnthropicProvider:
-    """Streams `AgentEvent`s from the Anthropic Messages API."""
-
     client: AsyncAnthropic
     model: str
-    temperature: float = 0.7
+    temperature: float
     max_tokens: int | None = None
 
     async def stream(
@@ -40,18 +36,17 @@ class AnthropicProvider:
         messages: Sequence[Message],
         tools: Sequence[ToolSchema],
     ) -> AsyncIterator[AgentEvent]:
-        system, api_messages = _to_api_messages(messages)
-        api_tools: list[Any] | NotGiven = [_to_api_tool(t) for t in tools] if tools else NOT_GIVEN
-        kwargs: dict[str, Any] = {
-            "model": self.model,
-            "messages": api_messages,
-            "tools": api_tools,
-            "stream": True,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens if self.max_tokens is not None else _DEFAULT_MAX_TOKENS,
-            "system": system if system else NOT_GIVEN,
-        }
-        chunks = await self.client.messages.create(**kwargs)
+        system, api_messages = _split_system_and_convert(messages)
+        api_tools: list[Any] | Omit = [_to_api_tool(t) for t in tools] if tools else omit
+        chunks = await self.client.messages.create(
+            model=self.model,
+            messages=api_messages,
+            tools=api_tools,
+            stream=True,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens if self.max_tokens is not None else _DEFAULT_MAX_TOKENS,
+            system=system if system else omit,
+        )
         async for event in _translate(chunks):
             yield event
 
@@ -94,9 +89,9 @@ class _PendingToolCall:
     arguments: str = ""
 
 
-def _to_api_messages(
+def _split_system_and_convert(
     messages: Sequence[Message],
-) -> tuple[str, list[dict[str, Any]]]:
+) -> tuple[str, list[Any]]:
     """Pull leading `system` messages aside; convert and collapse the rest.
 
     Returns `(system_prompt, api_messages)`. Adjacent `tool`-role messages
@@ -111,7 +106,7 @@ def _to_api_messages(
         else:
             rest.append(msg)
 
-    api_messages: list[dict[str, Any]] = []
+    api_messages: list[Any] = []
     i = 0
     while i < len(rest):
         if rest[i].role == "tool":
@@ -166,7 +161,6 @@ def _to_api_tool(schema: ToolSchema) -> dict[str, Any]:
 
 
 def from_config(config: Config) -> AnthropicProvider:
-    """Build the provider from `Config` plus the standard env-var secrets."""
     return AnthropicProvider(
         client=AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")),
         model=config.model,

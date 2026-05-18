@@ -23,5 +23,4 @@ _factories: Mapping[ProviderName, ProviderFactory] = {
 
 
 def build_provider(config: Config) -> Provider:
-    """Instantiate the provider selected by `config.provider`."""
     return _factories[config.provider](config)

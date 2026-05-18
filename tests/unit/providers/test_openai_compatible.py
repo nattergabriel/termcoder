@@ -176,7 +176,9 @@ async def test_provider_forwards_messages_and_tools_then_yields_translated_event
             _tool_chunk(index=0, id_="c1", name="read", arguments='{"path": "/a"}'),
         ]
     )
-    provider = OpenAICompatibleProvider(client=cast(AsyncOpenAI, client), model="gpt-4o-mini")
+    provider = OpenAICompatibleProvider(
+        client=cast(AsyncOpenAI, client), model="gpt-4o-mini", temperature=0.7
+    )
     msg = Message(role="user", content="open /a")
     schema = ToolSchema(name="read", description="read", parameters={"type": "object"})
 
@@ -190,7 +192,7 @@ async def test_provider_forwards_messages_and_tools_then_yields_translated_event
     assert kwargs["model"] == "gpt-4o-mini"
     assert kwargs["stream"] is True
     assert kwargs["temperature"] == 0.7
-    assert "max_tokens" not in kwargs
+    assert kwargs["max_tokens"] is omit
     assert kwargs["messages"] == [{"role": "user", "content": "open /a"}]
     assert kwargs["tools"] == [
         {
@@ -208,7 +210,9 @@ async def test_provider_passes_omit_sentinel_for_tools_when_none_provided() -> N
     # The SDK drops `omit` kwargs from the wire request — we just need to forward
     # the sentinel rather than a real list, so it doesn't get sent as `tools: []`.
     client = _FakeClient([_text_chunk("hi")])
-    provider = OpenAICompatibleProvider(client=cast(AsyncOpenAI, client), model="m")
+    provider = OpenAICompatibleProvider(
+        client=cast(AsyncOpenAI, client), model="m", temperature=0.7
+    )
 
     [_ async for _ in provider.stream([], [])]
 
