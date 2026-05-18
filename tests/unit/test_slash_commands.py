@@ -55,6 +55,17 @@ def test_duplicate_command_names_raise() -> None:
         )
 
 
+def test_names_returns_registered_commands_in_display_order() -> None:
+    commands = SlashCommands.from_iterable(
+        [
+            SlashCommand(name="model", handler=_record([]).handler),
+            SlashCommand(name="provider", handler=_record([]).handler),
+        ]
+    )
+
+    assert commands.names() == ("model", "provider")
+
+
 async def test_dispatch_empty_slash_raises() -> None:
     commands = SlashCommands.from_iterable([])
 

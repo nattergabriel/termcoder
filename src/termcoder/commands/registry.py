@@ -35,6 +35,10 @@ class SlashCommands:
             raise SlashCommandError("duplicate slash command name")
         return cls(commands=indexed)
 
+    def names(self) -> tuple[str, ...]:
+        """Registered command names in display order."""
+        return tuple(self.commands)
+
     async def dispatch(self, line: str) -> str:
         """Parse and dispatch a slash command."""
         stripped = line.strip()
