@@ -1,9 +1,4 @@
-"""Bash tool — run a shell command via `/bin/sh -c`.
-
-The result is the combined stdout + stderr followed by `[exit N]`. A non-zero
-exit code sets `is_error=True`; the command runs to completion and the model
-sees both the output and the exit status.
-"""
+"""Bash tool."""
 
 import asyncio
 

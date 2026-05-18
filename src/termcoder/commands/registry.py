@@ -1,9 +1,4 @@
-"""Slash-command dispatch for user-typed REPL directives like `/model gpt-4o-mini`.
-
-Concrete commands live in sibling modules and register as small, bound handlers.
-The registry only parses the command name, routes to the handler, and normalizes
-user-facing errors as `SlashCommandError`.
-"""
+"""Slash-command dispatch."""
 
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -20,7 +15,7 @@ type SlashHandler = Callable[[Sequence[str]], Awaitable[str]]
 
 @dataclass(frozen=True, slots=True)
 class SlashCommand:
-    """One registered slash command, bound to its handler at composition time."""
+    """One registered slash command."""
 
     name: str
     handler: SlashHandler
@@ -28,7 +23,7 @@ class SlashCommand:
 
 @dataclass(frozen=True, slots=True)
 class SlashCommands:
-    """Registry of slash commands. Built in the composition root, used by the REPL."""
+    """Registry of slash commands."""
 
     commands: Mapping[str, SlashCommand]
 
@@ -41,7 +36,7 @@ class SlashCommands:
         return cls(commands=indexed)
 
     async def dispatch(self, line: str) -> str:
-        """Parse a `/name args...` line and run its handler, returning the result message."""
+        """Parse and dispatch a slash command."""
         stripped = line.strip()
         if not stripped.startswith("/"):
             raise SlashCommandError(f"not a slash command: {line!r}")

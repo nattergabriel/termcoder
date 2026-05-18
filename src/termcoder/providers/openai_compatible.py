@@ -1,11 +1,4 @@
-"""OpenAI Chat Completions streaming provider — works with any compatible endpoint.
-
-The configured `base_url` on the `AsyncOpenAI` client determines which endpoint
-gets called (OpenAI, OpenRouter, Groq, local llama.cpp, …). Every `openai.*`
-import stays inside this module; the agent core never sees vendor types.
-`from_config` reads `OPENAI_API_KEY` and `OPENAI_BASE_URL` from the environment
-so secrets stay outside the TOML config.
-"""
+"""OpenAI-compatible Chat Completions provider."""
 
 import os
 from collections.abc import AsyncIterable, AsyncIterator, Sequence
@@ -49,12 +42,7 @@ class OpenAICompatibleProvider:
 async def _translate(
     chunks: AsyncIterable[ChatCompletionChunk],
 ) -> AsyncIterator[AgentEvent]:
-    """Convert OpenAI streaming chunks into `AgentEvent`s.
-
-    Tool-call arguments arrive in fragments across chunks; we accumulate them
-    by their `index` slot and emit each finished `ToolCallRequested` once the
-    chunk stream ends.
-    """
+    """Convert streaming chunks into agent events."""
     pending: dict[int, _PendingToolCall] = {}
     async for chunk in chunks:
         if not chunk.choices:
@@ -89,7 +77,7 @@ def _to_api_message(msg: Message) -> dict[str, Any]:
     if msg.role == "system" or msg.role == "user":
         return {"role": msg.role, "content": msg.content}
     if msg.role == "assistant":
-        # OpenAI requires `null`, not `""`, when an assistant message carries only tool_calls.
+        # OpenAI requires null when an assistant message carries only tool calls.
         result: dict[str, Any] = {"role": "assistant", "content": msg.content or None}
         if msg.tool_calls:
             result["tool_calls"] = [

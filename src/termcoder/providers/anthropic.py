@@ -1,11 +1,4 @@
-"""Anthropic Messages API streaming provider.
-
-Translates between our `Message` / `ToolSchema` / `AgentEvent` types and the
-Anthropic SDK's wire shapes. Every `anthropic.*` import stays inside this
-module; the agent core never sees vendor types. `from_config` reads
-`ANTHROPIC_API_KEY` from the environment so secrets stay outside the TOML
-config.
-"""
+"""Anthropic Messages API provider."""
 
 import json
 import os
@@ -20,7 +13,7 @@ from termcoder.config import Config
 from termcoder.events import AgentEvent, TextDelta, ToolCallRequested
 from termcoder.models import Message, ToolCall, ToolSchema
 
-# Anthropic requires `max_tokens` on every request; used when Config leaves it unset.
+# Anthropic requires max_tokens on every request.
 _DEFAULT_MAX_TOKENS = 4096
 
 
@@ -54,12 +47,7 @@ class AnthropicProvider:
 async def _translate(
     chunks: AsyncIterable[RawMessageStreamEvent],
 ) -> AsyncIterator[AgentEvent]:
-    """Convert Anthropic raw stream events into `AgentEvent`s.
-
-    Tool-call arguments arrive as `input_json_delta` fragments between a
-    `content_block_start` and `content_block_stop`; we accumulate by block
-    index and emit `ToolCallRequested` on stop.
-    """
+    """Convert raw stream events into agent events."""
     pending: dict[int, _PendingToolCall] = {}
     async for chunk in chunks:
         if chunk.type == "content_block_start":
@@ -92,12 +80,7 @@ class _PendingToolCall:
 def _split_system_and_convert(
     messages: Sequence[Message],
 ) -> tuple[str, list[Any]]:
-    """Pull leading `system` messages aside; convert and collapse the rest.
-
-    Returns `(system_prompt, api_messages)`. Adjacent `tool`-role messages
-    coalesce into a single `user` turn carrying their results as content
-    blocks — that's the shape Anthropic expects.
-    """
+    """Convert messages to Anthropic's system/message split."""
     system_chunks: list[str] = []
     rest: list[Message] = []
     for msg in messages:

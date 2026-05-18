@@ -1,8 +1,4 @@
-"""Shared domain types — the lingua franca passed across layers.
-
-Pure data. No I/O, no behavior. Providers adapt vendor wire formats to/from these
-types at their boundary; the agent core only ever sees these shapes.
-"""
+"""Shared domain types."""
 
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
@@ -15,12 +11,7 @@ type PermissionDecision = Literal["allow", "deny"]
 
 @dataclass(frozen=True, slots=True)
 class ToolCall:
-    """A request from the assistant to invoke a tool.
-
-    `arguments` is the raw JSON string emitted by the provider — deserialization
-    happens at the tool dispatch boundary, not here. This keeps the type faithful
-    to the wire shape and lets us round-trip through transcripts trivially.
-    """
+    """A request from the assistant to invoke a tool."""
 
     id: str
     name: ToolName
@@ -32,11 +23,7 @@ type PermissionCheck = Callable[[ToolCall], Awaitable[PermissionDecision]]
 
 @dataclass(frozen=True, slots=True)
 class ToolResult:
-    """The outcome of running a tool, fed back to the assistant as a tool-role message.
-
-    `is_error=True` means the tool reported a failure (file not found, non-zero exit,
-    etc.) — this is still normal LLM input. System failures raise instead.
-    """
+    """The outcome of running a tool."""
 
     tool_call_id: str
     content: str
@@ -45,12 +32,7 @@ class ToolResult:
 
 @dataclass(frozen=True, slots=True)
 class Message:
-    """One entry in the conversation log.
-
-    Fields beyond `role`/`content` are role-specific:
-    - assistant messages may carry `tool_calls`
-    - tool messages carry `tool_call_id` and put the tool output in `content`
-    """
+    """One entry in the conversation log."""
 
     role: Role
     content: str
@@ -60,12 +42,7 @@ class Message:
 
 @dataclass(frozen=True, slots=True)
 class ToolSchema:
-    """JSON-Schema description of a tool, as advertised to the provider.
-
-    Generic across vendors: each provider adapts this to its own wire format
-    (OpenAI's `tools` array, Anthropic's `tools` block, etc.) at its boundary.
-    `parameters` follows the JSON Schema object spec.
-    """
+    """JSON Schema description of a tool."""
 
     name: ToolName
     description: str

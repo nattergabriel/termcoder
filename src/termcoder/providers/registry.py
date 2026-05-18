@@ -1,10 +1,4 @@
-"""Provider registry — `ProviderName` → factory.
-
-Each provider module exposes a `from_config(config) -> Provider` callable; the
-registry maps the literal `ProviderName` to its factory so the composition
-root picks one at runtime. Add a new backend by writing its `from_config`
-and adding one entry below.
-"""
+"""Provider registry."""
 
 from collections.abc import Callable, Mapping
 

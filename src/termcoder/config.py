@@ -1,13 +1,8 @@
-"""Config loading — TOML files with precedence.
+"""Config loading from TOML and environment defaults.
 
 Precedence: per-project `.termcoder.toml` (cwd) > user-level config.toml >
 built-in defaults. Secrets (API keys, base URL) live in env vars, never here.
-Unknown keys in the TOML are ignored so the format can grow without breaking
-older clients; type-mismatched values raise `ConfigError`.
-
-`save_setting(...)` writes a single key back to a TOML file (used by slash
-commands like `/model` so changes outlive the session). Comments and blank
-lines in the file are dropped on rewrite — a v0.1 simplification.
+Unknown keys are ignored; type mismatches raise `ConfigError`.
 """
 
 import json
@@ -47,11 +42,7 @@ def load_config(
     cwd: Path | None = None,
     user_config_path: Path | None = None,
 ) -> Config:
-    """Merge the user and project TOML files over the defaults and return a `Config`.
-
-    `cwd` and `user_config_path` are injectable to keep tests away from real
-    home directories; production calls pass neither.
-    """
+    """Merge user and project TOML files over the defaults."""
     user_path = user_config_path or default_user_config_path()
     project_path = (cwd or Path.cwd()) / ".termcoder.toml"
 
@@ -68,11 +59,7 @@ def default_user_config_path() -> Path:
 
 
 def save_setting(key: str, value: TomlScalar, *, path: Path) -> None:
-    """Write `key = value` to the TOML file at `path`, preserving other keys.
-
-    Creates the file (and any missing parent directories) if needed. Comments
-    and blank lines in the existing file are not preserved.
-    """
+    """Write one top-level TOML key, preserving other keys."""
     raw: dict[str, Any] = {}
     if path.is_file():
         with path.open("rb") as f:
@@ -140,11 +127,11 @@ def _serialize_toml(data: Mapping[str, Any]) -> str:
 
 
 def _format_value(value: object, field: str) -> str:
-    # bool is a subclass of int — check it first.
+    # bool is a subclass of int; check it first.
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, str):
-        # JSON basic strings are a valid subset of TOML basic strings.
+        # JSON strings are valid TOML basic strings.
         return json.dumps(value)
     if isinstance(value, int | float):
         return repr(value)

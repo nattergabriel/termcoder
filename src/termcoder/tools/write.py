@@ -1,8 +1,4 @@
-"""Write tool — write text content to a file, overwriting any existing content.
-
-Parent directories must already exist; missing-parent and permission errors
-come back as a `ToolResult` with `is_error=True`.
-"""
+"""Write tool."""
 
 from pathlib import Path
 

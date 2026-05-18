@@ -1,9 +1,4 @@
-"""Streaming output of the agent loop, consumed by the TUI as an async iterator.
-
-The provider yields `TextDelta` and `ToolCallRequested` as it streams; the loop adds
-`ToolCallResult` after running the tool, and `TurnComplete` when the round ends.
-System errors are raised through the async generator, not yielded as events.
-"""
+"""Streaming events emitted during a turn."""
 
 from dataclasses import dataclass
 
@@ -19,7 +14,7 @@ class TextDelta:
 
 @dataclass(frozen=True, slots=True)
 class ToolCallRequested:
-    """The assistant has finished requesting a tool call (arguments fully streamed)."""
+    """The assistant requested a tool call."""
 
     tool_call: ToolCall
 
