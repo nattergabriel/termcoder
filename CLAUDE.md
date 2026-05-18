@@ -57,7 +57,6 @@ One PR per logical change (feature, bug fix, refactor, docs update). The user re
 
 ## Design principles
 
-- **YAGNI is enforced.** Don't pre-build for the post-v0.1 roadmap. Three similar lines is better than a premature abstraction. A registry for three tools is fine; a plugin system for three tools is overengineered.
 - **Isolate I/O at the edges.** `agent/`, `permissions.py`, `types.py`, `events.py`, `errors.py` are pure — no `print`, no file I/O, no network. Side effects live in `tools/`, `providers/`, `repl.py`, `config.py`, `logging.py`. This is what makes the agent loop testable with a `FakeProvider`.
 - **`typing.Protocol` over base classes.** Layer seams (provider, tool, permission policy) are structural. Avoid ABCs and deep inheritance.
 - **Domain types over primitives.** Give meaningful concepts their own type (`ToolName`, `PermissionDecision`, `Turn`, …). Avoid `dict[str, Any]` at module boundaries — mypy can't help you there.
@@ -125,7 +124,7 @@ tests/
     └── test_repl_smoke.py  # FakeProvider + scripted prompt session
 ```
 
-**Folder rule:** a folder is justified when ≥2 files exist *or will soon exist* that each need real space — distinct imports, distinct test fixtures, or substantive code (typically >50 lines each). Build for known growth, not for speculative plurality. `agent/`, `providers/`, `tools/` qualify (each future addition is substantial). `permissions.py` and `repl.py` don't (the modes are ~10-line functions of the same shape; the REPL is a single streaming session with no obvious split). Promote a file to a folder when one entry crosses ~250 lines or holds genuinely unrelated concerns. No `utils/` folder, ever.
+**Folder rule:** a folder is justified when ≥2 files exist *or will soon exist* that each need real space — distinct imports, distinct test fixtures, or substantive code (typically >50 lines each). Build for known growth, not for speculative plurality.
 
 ## What not to add
 
