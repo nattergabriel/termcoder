@@ -1,7 +1,7 @@
 """Unit tests for permission policies."""
 
 from termcoder.models import PermissionDecision, ToolCall
-from termcoder.permissions import ask_each
+from termcoder.permissions import allow_all, ask_each
 
 
 async def test_ask_each_delegates_to_prompt_callable() -> None:
@@ -26,3 +26,11 @@ async def test_ask_each_passes_through_denial() -> None:
     check = ask_each(prompt)
     decision = await check(ToolCall(id="c1", name="read", arguments="{}"))
     assert decision == "deny"
+
+
+async def test_allow_all_returns_allow_without_prompt() -> None:
+    check = allow_all()
+
+    decision = await check(ToolCall(id="c1", name="bash", arguments='{"command":"true"}'))
+
+    assert decision == "allow"

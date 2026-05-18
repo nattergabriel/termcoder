@@ -23,7 +23,7 @@ from termcoder.errors import TermcoderError
 
 type TomlScalar = str | int | float | bool
 
-type PermissionMode = Literal["ask_each"]
+type PermissionMode = Literal["ask_each", "allow_all"]
 type ProviderName = Literal["openai", "anthropic"]
 
 
@@ -122,6 +122,8 @@ def _as_int(value: object, field: str) -> int:
 def _as_permission_mode(value: object) -> PermissionMode:
     if value == "ask_each":
         return "ask_each"
+    if value == "allow_all":
+        return "allow_all"
     raise ConfigError(f"unknown permission_mode: {value!r}")
 
 

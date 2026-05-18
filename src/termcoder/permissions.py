@@ -2,9 +2,8 @@
 
 A `PermissionCheck` is what the agent loop awaits before dispatching every tool
 call. `permissions.py` provides factories that build one for each policy mode.
-At v0.1 only `ask_each` is implemented — every call defers to a user-supplied
-prompt callable wired in at composition time. Future modes (allowlist,
-deny_list, auto_approve_safe) join here as short functions of the same shape.
+`ask_each` defers every call to a user-supplied prompt callable wired in at
+composition time; `allow_all` approves every call without prompting.
 """
 
 from collections.abc import Awaitable, Callable
@@ -19,5 +18,14 @@ def ask_each(prompt: PromptUser) -> PermissionCheck:
 
     async def check(call: ToolCall) -> PermissionDecision:
         return await prompt(call)
+
+    return check
+
+
+def allow_all() -> PermissionCheck:
+    """Allow every tool call without prompting."""
+
+    async def check(_call: ToolCall) -> PermissionDecision:
+        return "allow"
 
     return check
