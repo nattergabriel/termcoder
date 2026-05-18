@@ -7,7 +7,7 @@ it, so no partials are ever in flight here.
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
-from termcoder.types import Message, ToolCall, ToolResult
+from termcoder.models import Message, ToolCall, ToolResult
 
 
 @dataclass(slots=True)

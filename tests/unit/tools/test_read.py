@@ -3,8 +3,8 @@
 import json
 from pathlib import Path
 
+from termcoder.models import ToolCall
 from termcoder.tools.read import Read
-from termcoder.types import ToolCall
 
 
 async def test_returns_file_contents(tmp_path: Path) -> None:

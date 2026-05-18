@@ -8,7 +8,7 @@ ordering — useful for the mid-stream gating test in particular.
 
 from dataclasses import dataclass, field
 
-from termcoder.types import PermissionDecision, ToolCall
+from termcoder.models import PermissionDecision, ToolCall
 
 
 @dataclass

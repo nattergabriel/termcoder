@@ -9,7 +9,7 @@ deny_list, auto_approve_safe) join here as short functions of the same shape.
 
 from collections.abc import Awaitable, Callable
 
-from termcoder.types import PermissionCheck, PermissionDecision, ToolCall
+from termcoder.models import PermissionCheck, PermissionDecision, ToolCall
 
 type PromptUser = Callable[[ToolCall], Awaitable[PermissionDecision]]
 

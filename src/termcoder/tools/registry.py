@@ -8,8 +8,8 @@ to advertise the catalog to the provider.
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
+from termcoder.models import ToolName, ToolSchema
 from termcoder.tools.protocol import Tool
-from termcoder.types import ToolName, ToolSchema
 
 
 @dataclass(slots=True)

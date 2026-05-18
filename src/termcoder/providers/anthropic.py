@@ -18,7 +18,7 @@ from anthropic.types import RawMessageStreamEvent
 
 from termcoder.config import Config
 from termcoder.events import AgentEvent, TextDelta, ToolCallRequested
-from termcoder.types import Message, ToolCall, ToolSchema
+from termcoder.models import Message, ToolCall, ToolSchema
 
 # Anthropic requires `max_tokens` on every request; used when Config leaves it unset.
 _DEFAULT_MAX_TOKENS = 4096

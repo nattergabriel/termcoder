@@ -31,6 +31,7 @@ from rich.markup import escape
 from rich.text import Text
 
 from termcoder.agent.loop import Agent
+from termcoder.commands.registry import SlashCommandError, SlashCommands
 from termcoder.events import (
     AgentEvent,
     TextDelta,
@@ -38,8 +39,7 @@ from termcoder.events import (
     ToolCallRequested,
     TurnComplete,
 )
-from termcoder.slash_commands import SlashCommandError, SlashCommands
-from termcoder.types import PermissionDecision, ToolCall
+from termcoder.models import PermissionDecision, ToolCall
 
 
 class Repl:

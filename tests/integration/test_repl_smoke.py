@@ -14,11 +14,11 @@ from prompt_toolkit.output import DummyOutput
 from rich.console import Console
 
 from termcoder.agent.loop import Agent
+from termcoder.commands.registry import SlashCommand, SlashCommands
 from termcoder.events import TextDelta, ToolCallRequested
-from termcoder.repl import Repl
-from termcoder.slash_commands import SlashCommand, SlashCommands
+from termcoder.models import ToolCall
 from termcoder.tools.registry import Registry
-from termcoder.types import ToolCall
+from termcoder.ui.repl import Repl
 from tests.fakes.fake_provider import FakeProvider
 
 _NO_SLASH_COMMANDS = SlashCommands.from_iterable([])

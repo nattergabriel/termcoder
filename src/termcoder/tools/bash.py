@@ -8,7 +8,7 @@ sees both the output and the exit status.
 import asyncio
 import json
 
-from termcoder.types import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 
 
 class Bash:

@@ -24,3 +24,7 @@ _factories: Mapping[ProviderName, ProviderFactory] = {
 
 def build_provider(config: Config) -> Provider:
     return _factories[config.provider](config)
+
+
+def provider_names() -> tuple[ProviderName, ...]:
+    return tuple(_factories)

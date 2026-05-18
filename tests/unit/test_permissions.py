@@ -1,7 +1,7 @@
 """Unit tests for permission policies."""
 
+from termcoder.models import PermissionDecision, ToolCall
 from termcoder.permissions import ask_each
-from termcoder.types import PermissionDecision, ToolCall
 
 
 async def test_ask_each_delegates_to_prompt_callable() -> None:

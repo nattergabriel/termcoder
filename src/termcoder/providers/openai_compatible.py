@@ -17,7 +17,7 @@ from openai.types.chat import ChatCompletionChunk
 
 from termcoder.config import Config
 from termcoder.events import AgentEvent, TextDelta, ToolCallRequested
-from termcoder.types import Message, ToolCall, ToolSchema
+from termcoder.models import Message, ToolCall, ToolSchema
 
 
 @dataclass

@@ -3,8 +3,8 @@
 import json
 from pathlib import Path
 
+from termcoder.models import ToolCall
 from termcoder.tools.write import Write
-from termcoder.types import ToolCall
 
 
 async def test_creates_new_file(tmp_path: Path) -> None:

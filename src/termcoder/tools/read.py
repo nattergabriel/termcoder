@@ -7,7 +7,7 @@ Missing files, non-UTF-8 content, and permission errors come back as a
 import json
 from pathlib import Path
 
-from termcoder.types import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 
 
 class Read:

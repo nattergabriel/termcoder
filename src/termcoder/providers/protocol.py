@@ -11,12 +11,15 @@ from collections.abc import AsyncIterator, Sequence
 from typing import Protocol
 
 from termcoder.events import AgentEvent
-from termcoder.types import Message, ToolSchema
+from termcoder.models import Message, ToolSchema
 
 
 class Provider(Protocol):
     model: str
     """The model identifier the provider will request. Mutable so `/model` can swap it live."""
+
+    temperature: float
+    """Sampling temperature. Mutable so `/temperature` can update it live."""
 
     def stream(
         self,
