@@ -17,7 +17,6 @@ System errors (provider unreachable, registry bugs) raise; tool failures and
 denials surface as `ToolResult(is_error=True)` so the model can react.
 """
 
-import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
@@ -84,7 +83,10 @@ class Agent:
             raise TermcoderError(
                 f"agent exceeded max_iterations={self.max_iterations} without completing the turn"
             )
-        except asyncio.CancelledError:
+        except BaseException:
+            # Any abnormal exit — cancellation, provider error, max_iterations,
+            # generator close — leaves a half-finished turn in the log. Roll
+            # state back to the checkpoint so the next turn starts clean.
             self.state.truncate(checkpoint)
             raise
 
