@@ -9,7 +9,6 @@ and adding one entry below.
 from collections.abc import Callable, Mapping
 
 from termcoder.config import Config, ProviderName
-from termcoder.errors import TermcoderError
 from termcoder.providers.anthropic import from_config as _build_anthropic
 from termcoder.providers.openai_compatible import from_config as _build_openai
 from termcoder.providers.protocol import Provider
@@ -25,7 +24,4 @@ _factories: Mapping[ProviderName, ProviderFactory] = {
 
 def build_provider(config: Config) -> Provider:
     """Instantiate the provider selected by `config.provider`."""
-    factory = _factories.get(config.provider)
-    if factory is None:
-        raise TermcoderError(f"no provider registered for {config.provider!r}")
-    return factory(config)
+    return _factories[config.provider](config)
