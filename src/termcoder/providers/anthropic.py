@@ -20,8 +20,10 @@ from termcoder.config import Config
 from termcoder.events import AgentEvent, TextDelta, ToolCallRequested
 from termcoder.types import Message, ToolCall, ToolSchema
 
-# Anthropic requires `max_tokens`; this is the fallback when Config leaves it unset.
-DEFAULT_MAX_TOKENS = 4096
+# Anthropic requires `max_tokens` on every request; this is the fallback when
+# Config leaves it unset. Kept private — composition passes `config.max_tokens`
+# through and the provider applies the default internally.
+_DEFAULT_MAX_TOKENS = 4096
 
 
 @dataclass
@@ -31,7 +33,7 @@ class AnthropicProvider:
     client: AsyncAnthropic
     model: str
     temperature: float = 0.7
-    max_tokens: int = DEFAULT_MAX_TOKENS
+    max_tokens: int | None = None
 
     async def stream(
         self,
@@ -46,7 +48,7 @@ class AnthropicProvider:
             "tools": api_tools,
             "stream": True,
             "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
+            "max_tokens": self.max_tokens if self.max_tokens is not None else _DEFAULT_MAX_TOKENS,
             "system": system if system else NOT_GIVEN,
         }
         chunks = await self.client.messages.create(**kwargs)
@@ -169,5 +171,5 @@ def from_config(config: Config) -> AnthropicProvider:
         client=AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY")),
         model=config.model,
         temperature=config.temperature,
-        max_tokens=config.max_tokens if config.max_tokens is not None else DEFAULT_MAX_TOKENS,
+        max_tokens=config.max_tokens,
     )
