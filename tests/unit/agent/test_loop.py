@@ -18,6 +18,7 @@ from termcoder.events import (
     TextDelta,
     ToolCallCompleted,
     ToolCallRequested,
+    ToolCallStarted,
     TurnComplete,
 )
 from termcoder.models import Message, PermissionDecision, ToolCall, ToolResult, ToolSchema
@@ -68,6 +69,7 @@ async def test_runs_tool_then_continues_with_result_in_next_round() -> None:
 
     assert events == [
         ToolCallRequested(tool_call=call),
+        ToolCallStarted(tool_call=call),
         ToolCallCompleted(result=ToolResult(tool_call_id="c1", content="FILE_BODY")),
         TextDelta(text="done"),
         TurnComplete(),
@@ -129,7 +131,9 @@ async def test_denied_tool_call_returns_error_result_without_invoking_tool() -> 
     events = [e async for e in agent.run_turn("be dangerous")]
 
     completed = [e for e in events if isinstance(e, ToolCallCompleted)]
+    started = [e for e in events if isinstance(e, ToolCallStarted)]
     assert len(completed) == 1
+    assert started == []
     assert completed[0].result.is_error is True
     assert "denied" in completed[0].result.content.lower()
     assert tool.received == []  # tool was never invoked
@@ -153,6 +157,8 @@ async def test_unknown_tool_returns_error_result() -> None:
     events = [e async for e in agent.run_turn("call missing")]
 
     completed = [e for e in events if isinstance(e, ToolCallCompleted)]
+    started = [e for e in events if isinstance(e, ToolCallStarted)]
+    assert started == []
     assert completed[0].result.is_error is True
     assert "missing" in completed[0].result.content
 
@@ -176,8 +182,10 @@ async def test_multiple_tool_calls_in_one_round_run_in_order() -> None:
     )
 
     events = [e async for e in agent.run_turn("do two things")]
+    started_calls = [e.tool_call.id for e in events if isinstance(e, ToolCallStarted)]
     completed_results = [e.result for e in events if isinstance(e, ToolCallCompleted)]
 
+    assert started_calls == ["a", "b"]
     assert [r.tool_call_id for r in completed_results] == ["a", "b"]
     assert [r.content for r in completed_results] == ["R", "B"]
 
@@ -247,7 +255,11 @@ async def test_loop_blocks_on_permission_callable_before_dispatching_tool() -> N
     assert not tool_ran.is_set()
 
     gate.set()
-    next_event = await pending
+    started = await pending
+    assert started == ToolCallStarted(tool_call=call)
+    assert not tool_ran.is_set()
+
+    next_event = await gen.__anext__()
     assert isinstance(next_event, ToolCallCompleted)
     assert tool_ran.is_set()
 

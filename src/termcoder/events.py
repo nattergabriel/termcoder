@@ -20,6 +20,13 @@ class ToolCallRequested:
 
 
 @dataclass(frozen=True, slots=True)
+class ToolCallStarted:
+    """The loop is about to run an allowed tool call."""
+
+    tool_call: ToolCall
+
+
+@dataclass(frozen=True, slots=True)
 class ToolCallCompleted:
     """The loop ran the tool (or the user denied it) and has a result to feed back."""
 
@@ -31,4 +38,4 @@ class TurnComplete:
     """The assistant returned a final response with no further tool calls pending."""
 
 
-type AgentEvent = TextDelta | ToolCallRequested | ToolCallCompleted | TurnComplete
+type AgentEvent = TextDelta | ToolCallRequested | ToolCallStarted | ToolCallCompleted | TurnComplete

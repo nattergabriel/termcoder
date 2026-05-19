@@ -23,6 +23,7 @@ from termcoder.events import (
     TextDelta,
     ToolCallCompleted,
     ToolCallRequested,
+    ToolCallStarted,
     TurnComplete,
 )
 from termcoder.models import PermissionDecision, ToolCall, ToolResult
@@ -50,6 +51,7 @@ class Repl:
 
     async def confirm_tool(self, call: ToolCall) -> PermissionDecision:
         """Prompt for a tool-call permission decision."""
+        self._close_live()
         # Keep y/n answers out of the main prompt history.
         real_history = self._session.history
         self._session.history = InMemoryHistory()
@@ -63,10 +65,7 @@ class Repl:
             raise asyncio.CancelledError from None
         finally:
             self._session.history = real_history
-        allowed = line.strip().lower() in {"y", "yes"}
-        if allowed:
-            self._start_waiting("running tool")
-        return "allow" if allowed else "deny"
+        return "allow" if line.strip().lower() in {"y", "yes"} else "deny"
 
     async def run(self, agent: Agent, slash_commands: SlashCommands) -> None:
         """Run until EOF."""
@@ -120,6 +119,9 @@ class Repl:
                 self._close_live(spacing_after_assistant=True)
                 self._tool_calls[event.tool_call.id] = event.tool_call
                 self._console.print(self._tool_request_text(event.tool_call))
+            case ToolCallStarted():
+                self._close_live()
+                self._start_waiting("running tool")
             case ToolCallCompleted():
                 self._close_live()
                 call = self._tool_calls.pop(event.result.tool_call_id, None)
@@ -132,6 +134,7 @@ class Repl:
                     )
                 )
                 self._print_blank_line()
+                self._start_waiting()
             case TurnComplete():
                 self._close_live(spacing_after_assistant=True)
 
