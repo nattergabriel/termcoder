@@ -12,6 +12,7 @@ from termcoder.events import (
     TextDelta,
     ToolCallCompleted,
     ToolCallRequested,
+    ToolCallStarted,
     TurnComplete,
 )
 from termcoder.models import Message, PermissionCheck, ToolCall, ToolResult
@@ -48,7 +49,7 @@ class Agent:
                         case ToolCallRequested():
                             tool_calls.append(event.tool_call)
                             yield event
-                        case ToolCallCompleted() | TurnComplete():
+                        case ToolCallStarted() | ToolCallCompleted() | TurnComplete():
                             # These events are emitted by the loop, not providers.
                             raise TermcoderError(f"provider emitted unexpected event: {event!r}")
                         case _:
@@ -61,9 +62,10 @@ class Agent:
                     return
 
                 for tool_call in tool_calls:
-                    result = await self._dispatch(tool_call)
-                    self.state.append_tool_result(result)
-                    yield ToolCallCompleted(result=result)
+                    async for event in self._dispatch(tool_call):
+                        if isinstance(event, ToolCallCompleted):
+                            self.state.append_tool_result(event.result)
+                        yield event
 
             raise TermcoderError(
                 f"agent exceeded max_iterations={self.max_iterations} without completing the turn"
@@ -73,22 +75,29 @@ class Agent:
             self.state.truncate(checkpoint)
             raise
 
-    async def _dispatch(self, call: ToolCall) -> ToolResult:
+    async def _dispatch(self, call: ToolCall) -> AsyncIterator[ToolCallStarted | ToolCallCompleted]:
         decision = await self.check_permission(call)
         if decision == "deny":
-            return ToolResult(
-                tool_call_id=call.id,
-                content="User denied permission to run this tool.",
-                is_error=True,
+            yield ToolCallCompleted(
+                result=ToolResult(
+                    tool_call_id=call.id,
+                    content="User denied permission to run this tool.",
+                    is_error=True,
+                )
             )
+            return
         tool = self.registry.get(call.name)
         if tool is None:
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"unknown tool: {call.name}",
-                is_error=True,
+            yield ToolCallCompleted(
+                result=ToolResult(
+                    tool_call_id=call.id,
+                    content=f"unknown tool: {call.name}",
+                    is_error=True,
+                )
             )
-        return await tool.run(call)
+            return
+        yield ToolCallStarted(tool_call=call)
+        yield ToolCallCompleted(result=await tool.run(call))
 
     def _messages_for_provider(self) -> list[Message]:
         if not self.system_prompt:
