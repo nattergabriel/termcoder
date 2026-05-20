@@ -282,11 +282,11 @@ class Repl:
 
         return self._single_line_preview(arguments)
 
-    def _single_line_preview(self, content: str, *, max_length: int = 120) -> str:
+    def _single_line_preview(self, content: str) -> str:
         preview = " ".join(content.splitlines()).strip()
-        if len(preview) <= max_length:
+        if len(preview) <= 120:
             return preview
-        return preview[: max_length - 3] + "..."
+        return preview[:117] + "..."
 
     def _line_preview(self, content: str, *, max_lines: int, preserve_tail: bool = False) -> str:
         lines = content.splitlines()
