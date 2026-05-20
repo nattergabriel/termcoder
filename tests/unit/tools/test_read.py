@@ -43,6 +43,36 @@ async def test_reports_non_utf8_as_tool_error(tmp_path: Path) -> None:
     assert "utf-8" in result.content.lower() or "codec" in result.content.lower()
 
 
+async def test_returns_requested_line_window(tmp_path: Path) -> None:
+    target = tmp_path / "notes.txt"
+    target.write_text("one\ntwo\nthree\nfour\n", encoding="utf-8")
+
+    result = await Read().run(_call({"path": str(target), "start_line": 2, "limit": 2}))
+
+    assert result.is_error is False
+    assert result.content == "two\nthree\n"
+
+
+async def test_line_window_can_start_past_end(tmp_path: Path) -> None:
+    target = tmp_path / "notes.txt"
+    target.write_text("one\n", encoding="utf-8")
+
+    result = await Read().run(_call({"path": str(target), "start_line": 10}))
+
+    assert result.is_error is False
+    assert result.content == ""
+
+
+async def test_rejects_invalid_line_window(tmp_path: Path) -> None:
+    target = tmp_path / "notes.txt"
+    target.write_text("one\n", encoding="utf-8")
+
+    result = await Read().run(_call({"path": str(target), "start_line": 0}))
+
+    assert result.is_error is True
+    assert "start_line" in result.content
+
+
 async def test_rejects_malformed_json_arguments() -> None:
     result = await Read().run(_raw_call("not json"))
 

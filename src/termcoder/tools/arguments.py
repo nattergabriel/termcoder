@@ -30,3 +30,23 @@ def required_string(args: Mapping[str, object], key: str) -> str:
     if not isinstance(value, str):
         raise ArgumentError(f"{key!r} must be a string")
     return value
+
+
+def optional_int(args: Mapping[str, object], key: str) -> int | None:
+    """Return an optional integer argument by key."""
+    if key not in args:
+        return None
+    value = args[key]
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ArgumentError(f"{key!r} must be an integer")
+    return value
+
+
+def optional_bool(args: Mapping[str, object], key: str, *, default: bool) -> bool:
+    """Return an optional boolean argument by key."""
+    if key not in args:
+        return default
+    value = args[key]
+    if not isinstance(value, bool):
+        raise ArgumentError(f"{key!r} must be a boolean")
+    return value
