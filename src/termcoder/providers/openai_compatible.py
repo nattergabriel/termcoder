@@ -74,28 +74,30 @@ class _PendingToolCall:
 
 
 def _to_api_message(msg: Message) -> dict[str, Any]:
-    if msg.role == "system" or msg.role == "user":
-        return {"role": msg.role, "content": msg.content}
-    if msg.role == "assistant":
-        # OpenAI requires null when an assistant message carries only tool calls.
-        result: dict[str, Any] = {"role": "assistant", "content": msg.content or None}
-        if msg.tool_calls:
-            result["tool_calls"] = [
-                {
-                    "id": tc.id,
-                    "type": "function",
-                    "function": {"name": tc.name, "arguments": tc.arguments},
-                }
-                for tc in msg.tool_calls
-            ]
-        return result
-    if msg.role == "tool":
-        return {
-            "role": "tool",
-            "tool_call_id": msg.tool_call_id,
-            "content": msg.content,
-        }
-    assert_never(msg.role)
+    match msg.role:
+        case "system" | "user":
+            return {"role": msg.role, "content": msg.content}
+        case "assistant":
+            # OpenAI requires null when an assistant message carries only tool calls.
+            result: dict[str, Any] = {"role": "assistant", "content": msg.content or None}
+            if msg.tool_calls:
+                result["tool_calls"] = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {"name": tc.name, "arguments": tc.arguments},
+                    }
+                    for tc in msg.tool_calls
+                ]
+            return result
+        case "tool":
+            return {
+                "role": "tool",
+                "tool_call_id": msg.tool_call_id,
+                "content": msg.content,
+            }
+        case _:
+            assert_never(msg.role)
 
 
 def _to_api_tool(schema: ToolSchema) -> dict[str, Any]:

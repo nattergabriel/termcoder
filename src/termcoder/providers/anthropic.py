@@ -106,25 +106,27 @@ def _split_system_and_convert(
 
 
 def _to_api_message(msg: Message) -> dict[str, Any]:
-    if msg.role == "user":
-        return {"role": "user", "content": msg.content}
-    if msg.role == "assistant":
-        blocks: list[dict[str, Any]] = []
-        if msg.content:
-            blocks.append({"type": "text", "text": msg.content})
-        for tc in msg.tool_calls:
-            blocks.append(
-                {
-                    "type": "tool_use",
-                    "id": tc.id,
-                    "name": tc.name,
-                    "input": json.loads(tc.arguments) if tc.arguments else {},
-                }
-            )
-        return {"role": "assistant", "content": blocks}
-    if msg.role == "system" or msg.role == "tool":
-        raise AssertionError(f"_to_api_message: role={msg.role!r} filtered upstream")
-    assert_never(msg.role)
+    match msg.role:
+        case "user":
+            return {"role": "user", "content": msg.content}
+        case "assistant":
+            blocks: list[dict[str, Any]] = []
+            if msg.content:
+                blocks.append({"type": "text", "text": msg.content})
+            for tc in msg.tool_calls:
+                blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": tc.id,
+                        "name": tc.name,
+                        "input": json.loads(tc.arguments) if tc.arguments else {},
+                    }
+                )
+            return {"role": "assistant", "content": blocks}
+        case "system" | "tool":
+            raise AssertionError(f"_to_api_message: role={msg.role!r} filtered upstream")
+        case _:
+            assert_never(msg.role)
 
 
 def _to_tool_result_block(msg: Message) -> dict[str, Any]:
