@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import signal
 from collections.abc import Iterator, Sequence
-from typing import TypeVar, cast
+from typing import cast
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.input import Input
@@ -29,8 +29,6 @@ from termcoder.ui.history import PromptHistory
 from termcoder.ui.interaction import ChoicePrompt
 from termcoder.ui.rendering import TurnRenderer
 from termcoder.ui.turn import TurnState
-
-T = TypeVar("T")
 
 
 class Repl:
@@ -58,7 +56,7 @@ class Repl:
         """Prompt for a tool-call permission decision."""
         return await self.ask_choice(self._permission_prompt(call))
 
-    async def ask_choice(self, prompt: ChoicePrompt[T]) -> T:
+    async def ask_choice[T](self, prompt: ChoicePrompt[T]) -> T:
         """Ask a reusable arrow-key navigable question below the active turn."""
         if not prompt.options:
             raise ValueError("choice prompt requires at least one option")
@@ -135,7 +133,7 @@ class Repl:
     def _render(self, event: AgentEvent) -> None:
         match event:
             case TextDelta():
-                if self._turn.apply_text_delta(event):
+                if self._turn.append_text(event.text):
                     self._refresh_live()
             case ToolCallRequested():
                 self._turn.request_tool(event)

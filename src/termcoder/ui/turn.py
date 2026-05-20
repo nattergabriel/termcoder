@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from termcoder.events import TextDelta, ToolCallCompleted, ToolCallRequested, ToolCallStarted
+from termcoder.events import ToolCallCompleted, ToolCallRequested, ToolCallStarted
 from termcoder.models import ToolCall, ToolResult
 
 
@@ -31,7 +31,6 @@ class TurnState:
     """Mutable display state for the active turn."""
 
     def __init__(self) -> None:
-        self.tool_calls: dict[str, ToolCall] = {}
         self.tool_views: dict[str, ToolView] = {}
         self.items: list[TurnItem] = []
         self.waiting_label: str | None = None
@@ -41,7 +40,6 @@ class TurnState:
         self.waiting_label = "thinking"
 
     def clear(self) -> None:
-        self.tool_calls.clear()
         self.tool_views.clear()
         self.items.clear()
         self.waiting_label = None
@@ -59,7 +57,6 @@ class TurnState:
     def request_tool(self, event: ToolCallRequested) -> None:
         self.waiting_label = None
         view = ToolView(call=event.tool_call, status="requested")
-        self.tool_calls[event.tool_call.id] = event.tool_call
         self.tool_views[event.tool_call.id] = view
         self.items.append(view)
 
@@ -75,13 +72,9 @@ class TurnState:
 
     def complete_tool(self, event: ToolCallCompleted) -> None:
         self.waiting_label = "thinking"
-        self.tool_calls.pop(event.result.tool_call_id, None)
         view = self.tool_views.get(event.result.tool_call_id)
         if view is None:
             self.items.append(ResultView(result=event.result))
             return
         view.status = "completed"
         view.result = event.result
-
-    def apply_text_delta(self, event: TextDelta) -> bool:
-        return self.append_text(event.text)
