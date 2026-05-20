@@ -17,6 +17,8 @@ from termcoder.ui.formatting import (
 )
 from termcoder.ui.turn import AssistantView, ResultView, ToolView, TurnState
 
+_CHOICE_SEPARATOR_MAX_WIDTH = 80
+
 
 class TurnRenderer:
     """Render a turn and any inline prompt into Rich objects."""
@@ -73,7 +75,10 @@ class TurnRenderer:
 
     def choice_prompt_text(self, state: ChoicePromptState) -> Text:
         text = Text()
-        text.append("─" * min(self._console.width, 88), style="bright_black")
+        text.append(
+            "─" * min(self._console.width, _CHOICE_SEPARATOR_MAX_WIDTH),
+            style="bright_black",
+        )
         text.append("\n")
         text.append(state.prompt.title)
         text.append("\n")
