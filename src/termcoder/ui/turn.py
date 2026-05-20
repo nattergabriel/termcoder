@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 
-from termcoder.events import ToolCallCompleted, ToolCallRequested, ToolCallStarted
 from termcoder.models import ToolCall, ToolResult
 
 
@@ -53,27 +52,27 @@ class TurnState:
             self.items.append(AssistantView(content=chunk))
         return True
 
-    def request_tool(self, event: ToolCallRequested) -> None:
+    def request_tool(self, call: ToolCall) -> None:
         self.waiting_label = None
-        view = ToolView(call=event.tool_call)
-        self.tool_views[event.tool_call.id] = view
+        view = ToolView(call=call)
+        self.tool_views[call.id] = view
         self.items.append(view)
 
-    def start_tool(self, event: ToolCallStarted) -> None:
+    def start_tool(self, call: ToolCall) -> None:
         self.waiting_label = "running tool"
-        view = self.tool_views.get(event.tool_call.id)
+        view = self.tool_views.get(call.id)
         if view is None:
-            view = ToolView(call=event.tool_call, is_running=True)
-            self.tool_views[event.tool_call.id] = view
+            view = ToolView(call=call, is_running=True)
+            self.tool_views[call.id] = view
             self.items.append(view)
             return
         view.is_running = True
 
-    def complete_tool(self, event: ToolCallCompleted) -> None:
+    def complete_tool(self, result: ToolResult) -> None:
         self.waiting_label = "thinking"
-        view = self.tool_views.get(event.result.tool_call_id)
+        view = self.tool_views.get(result.tool_call_id)
         if view is None:
-            self.items.append(ResultView(result=event.result))
+            self.items.append(ResultView(result=result))
             return
         view.is_running = False
-        view.result = event.result
+        view.result = result

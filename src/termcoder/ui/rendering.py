@@ -6,7 +6,6 @@ from rich.console import Console, Group, RenderableType
 from rich.spinner import Spinner
 from rich.text import Text
 
-from termcoder.ui.choice import ChoicePromptState
 from termcoder.ui.formatting import (
     line_preview,
     prefix_lines,
@@ -14,6 +13,7 @@ from termcoder.ui.formatting import (
     tool_result_label,
     tool_summary,
 )
+from termcoder.ui.interaction import ChoicePromptState
 from termcoder.ui.turn import AssistantView, ResultView, ToolView, TurnState
 
 _CHOICE_SEPARATOR_MAX_WIDTH = 80
