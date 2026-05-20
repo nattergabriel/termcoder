@@ -4,7 +4,6 @@ import asyncio
 import contextlib
 import signal
 from collections.abc import Iterator, Sequence
-from typing import cast
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.input import Input
@@ -23,10 +22,10 @@ from termcoder.events import (
     TurnComplete,
 )
 from termcoder.models import PermissionDecision, ToolCall
-from termcoder.ui.choice import ChoicePromptState, ChoiceReader
+from termcoder.ui.choice import ChoiceReader
 from termcoder.ui.formatting import permission_prompt
 from termcoder.ui.history import PromptHistory
-from termcoder.ui.interaction import ChoicePrompt
+from termcoder.ui.interaction import ChoicePrompt, ChoicePromptState
 from termcoder.ui.rendering import TurnRenderer
 from termcoder.ui.turn import TurnState
 
@@ -58,15 +57,7 @@ class Repl:
 
     async def ask_choice[T](self, prompt: ChoicePrompt[T]) -> T:
         """Ask a reusable arrow-key navigable question below the active turn."""
-        if not prompt.options:
-            raise ValueError("choice prompt requires at least one option")
-        if not 0 <= prompt.default_index < len(prompt.options):
-            raise ValueError("choice prompt default_index is out of range")
-
-        state = ChoicePromptState(
-            prompt=cast(ChoicePrompt[object], prompt),
-            selected_index=prompt.default_index,
-        )
+        state = prompt.initial_state()
         self._choice_state = state
         self._turn.waiting_label = None
         self._refresh_live()
@@ -136,13 +127,13 @@ class Repl:
                 if self._turn.append_text(event.text):
                     self._refresh_live()
             case ToolCallRequested():
-                self._turn.request_tool(event)
+                self._turn.request_tool(event.tool_call)
                 self._refresh_live()
             case ToolCallStarted():
-                self._turn.start_tool(event)
+                self._turn.start_tool(event.tool_call)
                 self._refresh_live()
             case ToolCallCompleted():
-                self._turn.complete_tool(event)
+                self._turn.complete_tool(event.result)
                 self._refresh_live()
             case TurnComplete():
                 self._turn.waiting_label = None

@@ -2,7 +2,6 @@
 
 import asyncio
 from collections.abc import Callable
-from dataclasses import dataclass
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.input import Input
@@ -10,13 +9,7 @@ from prompt_toolkit.input.typeahead import get_typeahead, store_typeahead
 from prompt_toolkit.key_binding.key_processor import KeyPress
 from prompt_toolkit.keys import Keys
 
-from termcoder.ui.interaction import ChoicePrompt
-
-
-@dataclass(slots=True)
-class ChoicePromptState:
-    prompt: ChoicePrompt[object]
-    selected_index: int
+from termcoder.ui.interaction import ChoicePromptState
 
 
 class ChoiceReader:
