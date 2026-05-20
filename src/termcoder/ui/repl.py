@@ -17,6 +17,7 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.output import Output
 from rich.console import Console, Group, RenderableType
 from rich.live import Live
+from rich.spinner import Spinner
 from rich.text import Text
 
 from termcoder.agent.loop import Agent
@@ -270,7 +271,7 @@ class Repl:
         if self._waiting_label is not None:
             if renderables:
                 renderables.append(Text(""))
-            renderables.append(Text(self._waiting_label, style="dim"))
+            renderables.append(Spinner("dots", text=Text(self._waiting_label, style="dim")))
         if self._choice_prompt is not None:
             if renderables:
                 renderables.append(Text(""))
