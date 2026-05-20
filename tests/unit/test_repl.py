@@ -22,6 +22,12 @@ from termcoder.ui.repl import Repl
 from tests.fakes.fake_provider import FakeProvider
 
 
+def _finish_render(repl: Repl) -> None:
+    repl._waiting_label = None
+    repl._choice_prompt = None
+    repl._close_live()
+
+
 async def test_sigint_handler_only_cancels_active_turn() -> None:
     loop = asyncio.get_running_loop()
     original_add_signal_handler = loop.add_signal_handler
@@ -66,6 +72,7 @@ async def test_render_escapes_rich_markup_in_tool_output() -> None:
                 result=ToolResult(tool_call_id="t1", content="[exit 1] boom", is_error=True),
             )
         )
+        _finish_render(repl)
 
     assert "[exit 1] boom" in buffer.getvalue()
 
@@ -142,10 +149,10 @@ async def test_waiting_spinner_is_replaced_by_assistant_stream() -> None:
     with create_pipe_input() as pt_input:
         repl = Repl(console=console, input=pt_input, output=DummyOutput())
         repl._start_waiting()
-        assert repl._live_mode == "waiting"
+        assert repl._live_mode == "turn"
         repl._render(TextDelta(text="done"))
         live_mode: object = repl._live_mode
-        assert live_mode == "assistant"
+        assert live_mode == "turn"
         repl._close_live()
 
     assert "done" in buffer.getvalue()
@@ -159,7 +166,7 @@ async def test_empty_text_delta_does_not_render_empty_assistant_message() -> Non
         repl._start_waiting()
         repl._render(TextDelta(text=""))
 
-        assert repl._live_mode == "waiting"
+        assert repl._live_mode == "turn"
         repl._close_live()
 
     assert "*" not in buffer.getvalue()
@@ -179,6 +186,7 @@ async def test_tool_request_renders_compact_command_preview() -> None:
                 )
             )
         )
+        _finish_render(repl)
 
     output = buffer.getvalue()
     assert "● Bash(ls -la)" in output
@@ -200,6 +208,7 @@ async def test_write_tool_request_summarizes_path_and_content_size() -> None:
                 )
             )
         )
+        _finish_render(repl)
 
     assert "● Write(a.py, 3 characters)" in buffer.getvalue()
 
@@ -212,7 +221,9 @@ async def test_permission_prompt_includes_tool_argument_preview() -> None:
         ToolCall(id="t1", name="bash", arguments='{"command": "rm -rf build"}')
     )
 
-    assert prompt == "  └ Allow Bash(rm -rf build)? [y/N] "
+    assert prompt.title == "Allow Bash(rm -rf build)?"
+    assert [option.label for option in prompt.options] == ["Yes", "No"]
+    assert prompt.default_index == 1
 
 
 async def test_permission_allow_does_not_start_tool_waiting_spinner() -> None:
@@ -241,6 +252,19 @@ async def test_permission_deny_does_not_start_tool_waiting_spinner() -> None:
         assert repl._live_mode is None
 
 
+async def test_permission_prompt_supports_arrow_key_selection() -> None:
+    with create_pipe_input() as pt_input:
+        pt_input.send_text("\x1b[A\n")
+        repl = Repl(input=pt_input, output=DummyOutput())
+
+        decision = await repl.confirm_tool(
+            ToolCall(id="t1", name="bash", arguments='{"command": "sleep 1"}')
+        )
+
+        assert decision == "allow"
+        assert repl._live_mode is None
+
+
 async def test_tool_started_starts_waiting_spinner() -> None:
     with create_pipe_input() as pt_input:
         repl = Repl(input=pt_input, output=DummyOutput())
@@ -250,7 +274,7 @@ async def test_tool_started_starts_waiting_spinner() -> None:
             )
         )
 
-        assert repl._live_mode == "waiting"
+        assert repl._live_mode == "turn"
         repl._close_live()
 
 
@@ -265,7 +289,7 @@ async def test_tool_started_replaces_existing_waiting_spinner() -> None:
             )
         )
 
-        assert repl._live_mode == "waiting"
+        assert repl._live_mode == "turn"
         repl._close_live()
 
 
@@ -280,9 +304,10 @@ async def test_tool_output_is_truncated_to_five_lines() -> None:
                 result=ToolResult(tool_call_id="t1", content=content),
             )
         )
+        _finish_render(repl)
 
     output = buffer.getvalue()
-    assert "  └ Tool completed" in output
+    assert "  └ Done" in output
     assert "line 1" in output
     assert "line 5" in output
     assert "line 6" not in output
@@ -295,7 +320,8 @@ async def test_tool_completed_starts_waiting_for_followup_response() -> None:
 
         repl._render(ToolCallCompleted(result=ToolResult(tool_call_id="t1", content="result")))
 
-        assert repl._live_mode == "waiting"
+        assert repl._live_mode == "turn"
+        assert repl._waiting_label == "thinking"
         repl._close_live()
 
 
@@ -311,6 +337,7 @@ async def test_tool_error_preview_keeps_tail_line() -> None:
                 result=ToolResult(tool_call_id="t1", content=content, is_error=True),
             )
         )
+        _finish_render(repl)
 
     output = buffer.getvalue()
     assert "line 1" in output
@@ -387,10 +414,11 @@ async def test_read_tool_result_summarizes_line_count_in_group() -> None:
                 result=ToolResult(tool_call_id="t1", content="first\nsecond\nthird"),
             )
         )
+        _finish_render(repl)
 
     output = buffer.getvalue()
     assert "● Read(src/termcoder/ui/repl.py)" in output
-    assert "  └ Read(src/termcoder/ui/repl.py): Read 3 lines" in output
+    assert "  └ Read 3 lines" in output
 
 
 async def test_multiple_tool_results_identify_their_matching_request() -> None:
@@ -426,9 +454,10 @@ async def test_multiple_tool_results_identify_their_matching_request() -> None:
                 result=ToolResult(tool_call_id="bash-call", content="out"),
             )
         )
+        _finish_render(repl)
 
     output = buffer.getvalue()
     assert "● Read(a.py)" in output
     assert "● Bash(ls)" in output
-    assert "  └ Read(a.py): Read 2 lines" in output
-    assert "  └ Bash(ls): Tool completed" in output
+    assert "  └ Read 2 lines" in output
+    assert "  └ Done" in output
