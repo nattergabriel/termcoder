@@ -73,13 +73,6 @@ def line_preview(content: str, *, max_lines: int, preserve_tail: bool = False) -
     return "\n".join([*lines[:max_lines], hidden_line(hidden)])
 
 
-def tool_result_heading(call: ToolCall | None, result: ToolResult) -> str:
-    label = tool_result_label(call, result)
-    if call is None:
-        return label
-    return f"{tool_summary(call)}: {label}"
-
-
 def tool_result_label(call: ToolCall | None, result: ToolResult) -> str:
     if result.is_error:
         if "denied permission" in result.content.lower():
