@@ -54,11 +54,13 @@ async def _translate(
             slot = pending.setdefault(tc_delta.index, _PendingToolCall())
             if tc_delta.id:
                 slot.id = tc_delta.id
-            if tc_delta.function is not None:
-                if tc_delta.function.name:
-                    slot.name = tc_delta.function.name
-                if tc_delta.function.arguments:
-                    slot.arguments += tc_delta.function.arguments
+            function = tc_delta.function
+            if function is None:
+                continue
+            if function.name:
+                slot.name = function.name
+            if function.arguments:
+                slot.arguments += function.arguments
     for index in sorted(pending):
         slot = pending[index]
         yield ToolCallRequested(

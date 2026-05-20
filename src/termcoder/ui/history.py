@@ -17,13 +17,11 @@ class PromptHistory:
         bindings = KeyBindings()
 
         @bindings.add("up")
-        def history_previous(event: KeyPressEvent) -> None:
-            del event
+        def history_previous(_event: KeyPressEvent) -> None:
             self.previous()
 
         @bindings.add("down")
-        def history_next(event: KeyPressEvent) -> None:
-            del event
+        def history_next(_event: KeyPressEvent) -> None:
             self.next()
 
         return bindings
