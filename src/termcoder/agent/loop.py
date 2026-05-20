@@ -63,8 +63,11 @@ class Agent:
 
                 for tool_call in tool_calls:
                     async for event in self._dispatch(tool_call):
-                        if isinstance(event, ToolCallCompleted):
-                            self.state.append_tool_result(event.result)
+                        match event:
+                            case ToolCallCompleted():
+                                self.state.append_tool_result(event.result)
+                            case ToolCallStarted():
+                                pass
                         yield event
 
             raise TermcoderError(
