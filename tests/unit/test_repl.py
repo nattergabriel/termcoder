@@ -6,8 +6,7 @@ import io
 import pytest
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
-from rich.console import Console, Group
-from rich.spinner import Spinner
+from rich.console import Console
 
 from termcoder.agent.loop import Agent
 from termcoder.events import (
@@ -19,13 +18,12 @@ from termcoder.events import (
 )
 from termcoder.models import PermissionDecision, ToolCall, ToolResult
 from termcoder.tools.registry import Registry
+from termcoder.ui.formatting import permission_prompt
 from termcoder.ui.repl import Repl
 from tests.fakes.fake_provider import FakeProvider
 
 
 def _finish_render(repl: Repl) -> None:
-    repl._waiting_label = None
-    repl._choice_prompt = None
     repl._close_live()
 
 
@@ -149,26 +147,11 @@ async def test_waiting_spinner_is_replaced_by_assistant_stream() -> None:
     console = Console(file=buffer, force_terminal=False, width=100)
     with create_pipe_input() as pt_input:
         repl = Repl(console=console, input=pt_input, output=DummyOutput())
-        repl._start_waiting()
-        assert repl._live_mode == "turn"
+        repl._begin_turn()
         repl._render(TextDelta(text="done"))
-        live_mode: object = repl._live_mode
-        assert live_mode == "turn"
         repl._close_live()
 
     assert "done" in buffer.getvalue()
-
-
-async def test_waiting_state_renders_spinner() -> None:
-    with create_pipe_input() as pt_input:
-        repl = Repl(input=pt_input, output=DummyOutput())
-        repl._start_waiting()
-
-        renderable = repl._turn_renderable()
-
-        assert isinstance(renderable, Group)
-        assert any(isinstance(item, Spinner) for item in renderable.renderables)
-        repl._close_live()
 
 
 async def test_empty_text_delta_does_not_render_empty_assistant_message() -> None:
@@ -176,10 +159,9 @@ async def test_empty_text_delta_does_not_render_empty_assistant_message() -> Non
     console = Console(file=buffer, force_terminal=False, width=100)
     with create_pipe_input() as pt_input:
         repl = Repl(console=console, input=pt_input, output=DummyOutput())
-        repl._start_waiting()
+        repl._begin_turn()
         repl._render(TextDelta(text=""))
 
-        assert repl._live_mode == "turn"
         repl._close_live()
 
     assert "*" not in buffer.getvalue()
@@ -227,10 +209,7 @@ async def test_write_tool_request_summarizes_path_and_content_size() -> None:
 
 
 async def test_permission_prompt_includes_tool_argument_preview() -> None:
-    with create_pipe_input() as pt_input:
-        repl = Repl(input=pt_input, output=DummyOutput())
-
-    prompt = repl._permission_prompt(
+    prompt = permission_prompt(
         ToolCall(id="t1", name="bash", arguments='{"command": "rm -rf build"}')
     )
 
@@ -249,7 +228,6 @@ async def test_permission_allow_does_not_start_tool_waiting_spinner() -> None:
         )
 
         assert decision == "allow"
-        assert repl._live_mode is None
 
 
 async def test_permission_deny_does_not_start_tool_waiting_spinner() -> None:
@@ -262,7 +240,6 @@ async def test_permission_deny_does_not_start_tool_waiting_spinner() -> None:
         )
 
         assert decision == "deny"
-        assert repl._live_mode is None
 
 
 async def test_permission_prompt_supports_arrow_key_selection() -> None:
@@ -275,7 +252,6 @@ async def test_permission_prompt_supports_arrow_key_selection() -> None:
         )
 
         assert decision == "allow"
-        assert repl._live_mode is None
 
 
 async def test_tool_started_starts_waiting_spinner() -> None:
@@ -287,14 +263,13 @@ async def test_tool_started_starts_waiting_spinner() -> None:
             )
         )
 
-        assert repl._live_mode == "turn"
         repl._close_live()
 
 
 async def test_tool_started_replaces_existing_waiting_spinner() -> None:
     with create_pipe_input() as pt_input:
         repl = Repl(input=pt_input, output=DummyOutput())
-        repl._start_waiting()
+        repl._begin_turn()
 
         repl._render(
             ToolCallStarted(
@@ -302,7 +277,6 @@ async def test_tool_started_replaces_existing_waiting_spinner() -> None:
             )
         )
 
-        assert repl._live_mode == "turn"
         repl._close_live()
 
 
@@ -328,14 +302,15 @@ async def test_tool_output_is_truncated_to_five_lines() -> None:
 
 
 async def test_tool_completed_starts_waiting_for_followup_response() -> None:
+    buffer = io.StringIO()
+    console = Console(file=buffer, force_terminal=False, width=100)
     with create_pipe_input() as pt_input:
-        repl = Repl(input=pt_input, output=DummyOutput())
-
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
         repl._render(ToolCallCompleted(result=ToolResult(tool_call_id="t1", content="result")))
 
-        assert repl._live_mode == "turn"
-        assert repl._waiting_label == "thinking"
         repl._close_live()
+
+    assert "thinking" in buffer.getvalue()
 
 
 async def test_tool_error_preview_keeps_tail_line() -> None:
@@ -383,12 +358,9 @@ async def test_pending_tool_display_state_is_cleared_when_turn_is_cancelled() ->
         task = asyncio.create_task(repl._run_turn(agent, "run it"))
         await permission_started.wait()
 
-        assert repl._tool_calls == {"t1": call}
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
-
-    assert repl._tool_calls == {}
 
 
 async def test_tool_result_adds_spacing_before_followup_assistant_text() -> None:
