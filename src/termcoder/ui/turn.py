@@ -1,7 +1,6 @@
 """In-memory state for one assistant turn."""
 
 from dataclasses import dataclass
-from typing import Literal
 
 from termcoder.events import ToolCallCompleted, ToolCallRequested, ToolCallStarted
 from termcoder.models import ToolCall, ToolResult
@@ -15,7 +14,7 @@ class AssistantView:
 @dataclass(slots=True)
 class ToolView:
     call: ToolCall
-    status: Literal["requested", "running", "completed"]
+    is_running: bool = False
     result: ToolResult | None = None
 
 
@@ -56,7 +55,7 @@ class TurnState:
 
     def request_tool(self, event: ToolCallRequested) -> None:
         self.waiting_label = None
-        view = ToolView(call=event.tool_call, status="requested")
+        view = ToolView(call=event.tool_call)
         self.tool_views[event.tool_call.id] = view
         self.items.append(view)
 
@@ -64,11 +63,11 @@ class TurnState:
         self.waiting_label = "running tool"
         view = self.tool_views.get(event.tool_call.id)
         if view is None:
-            view = ToolView(call=event.tool_call, status="running")
+            view = ToolView(call=event.tool_call, is_running=True)
             self.tool_views[event.tool_call.id] = view
             self.items.append(view)
             return
-        view.status = "running"
+        view.is_running = True
 
     def complete_tool(self, event: ToolCallCompleted) -> None:
         self.waiting_label = "thinking"
@@ -76,5 +75,5 @@ class TurnState:
         if view is None:
             self.items.append(ResultView(result=event.result))
             return
-        view.status = "completed"
+        view.is_running = False
         view.result = event.result

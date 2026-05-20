@@ -11,7 +11,6 @@ from termcoder.ui.formatting import (
     line_preview,
     prefix_lines,
     slash_command_summary,
-    tool_result_heading,
     tool_result_label,
     tool_summary,
 )
@@ -43,7 +42,7 @@ class TurnRenderer:
                 case ResultView():
                     renderables.append(
                         self.tool_result_text(
-                            tool_result_heading(None, item.result),
+                            tool_result_label(None, item.result),
                             item.result.content,
                             "red" if item.result.is_error else "green",
                             preserve_tail=item.result.is_error,
@@ -111,7 +110,7 @@ class TurnRenderer:
                     preserve_tail=view.result.is_error,
                 )
             )
-        elif view.status == "running":
+        elif view.is_running:
             text.append("\n")
             text.append("  └ Running", style="bright_black")
         return text

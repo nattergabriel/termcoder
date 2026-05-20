@@ -23,8 +23,8 @@ from termcoder.events import (
     TurnComplete,
 )
 from termcoder.models import PermissionDecision, ToolCall
-from termcoder.ui import formatting
 from termcoder.ui.choice import ChoicePromptState, ChoiceReader
+from termcoder.ui.formatting import permission_prompt
 from termcoder.ui.history import PromptHistory
 from termcoder.ui.interaction import ChoicePrompt
 from termcoder.ui.rendering import TurnRenderer
@@ -54,7 +54,7 @@ class Repl:
 
     async def confirm_tool(self, call: ToolCall) -> PermissionDecision:
         """Prompt for a tool-call permission decision."""
-        return await self.ask_choice(self._permission_prompt(call))
+        return await self.ask_choice(permission_prompt(call))
 
     async def ask_choice[T](self, prompt: ChoicePrompt[T]) -> T:
         """Ask a reusable arrow-key navigable question below the active turn."""
@@ -183,9 +183,6 @@ class Repl:
         self._console.print(self._renderer.banner(command_names))
         self._print_blank_line()
         self._banner_rendered = True
-
-    def _permission_prompt(self, call: ToolCall) -> ChoicePrompt[PermissionDecision]:
-        return formatting.permission_prompt(call)
 
     def _print_blank_line(self) -> None:
         self._console.print("")
