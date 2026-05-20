@@ -28,6 +28,14 @@ def test_max_iterations_flows_from_config_to_agent(
     assert ctx.agent.max_iterations == 7
 
 
+def test_default_tools_are_registered(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+
+    ctx = build(Config(), _stub_prompt)
+
+    assert set(ctx.agent.registry.tools) == {"read", "write", "edit", "bash"}
+
+
 async def test_allow_all_permission_mode_bypasses_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
     called = False

@@ -12,6 +12,7 @@ from termcoder.agent.loop import Agent
 from termcoder.events import TextDelta, ToolCallCompleted, ToolCallRequested, TurnComplete
 from termcoder.models import ToolCall
 from termcoder.tools.bash import Bash
+from termcoder.tools.edit import Edit
 from termcoder.tools.read import Read
 from termcoder.tools.registry import Registry
 from termcoder.tools.write import Write
@@ -101,6 +102,35 @@ async def test_bash_command_output_feeds_back_to_provider(tmp_path: Path) -> Non
     tool_message = second_messages[-1]
     assert tool_message.role == "tool"
     assert "hello-from-shell" in tool_message.content
+
+
+async def test_edit_result_feeds_back_to_provider(tmp_path: Path) -> None:
+    target = tmp_path / "note.txt"
+    target.write_text("hello old world", encoding="utf-8")
+    edit_call = _tool_call(
+        "edit",
+        "e1",
+        {"path": str(target), "old": "old", "new": "new"},
+    )
+    provider = FakeProvider(
+        scripts=[
+            [ToolCallRequested(tool_call=edit_call)],
+            [TextDelta(text="updated")],
+        ]
+    )
+    agent = Agent(
+        provider=provider,
+        registry=Registry.from_iterable([Edit()]),
+        check_permission=FakePermission(),
+        system_prompt="",
+    )
+
+    [_ async for _ in agent.run_turn("replace old with new")]
+
+    assert target.read_text(encoding="utf-8") == "hello new world"
+    tool_message = provider.received_calls[1][0][-1]
+    assert tool_message.role == "tool"
+    assert "replaced 1 occurrence" in tool_message.content
 
 
 async def test_denial_passes_a_denial_message_to_the_next_round(tmp_path: Path) -> None:
