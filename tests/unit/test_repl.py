@@ -6,7 +6,8 @@ import io
 import pytest
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
-from rich.console import Console
+from rich.console import Console, Group
+from rich.spinner import Spinner
 
 from termcoder.agent.loop import Agent
 from termcoder.events import (
@@ -156,6 +157,18 @@ async def test_waiting_spinner_is_replaced_by_assistant_stream() -> None:
         repl._close_live()
 
     assert "done" in buffer.getvalue()
+
+
+async def test_waiting_state_renders_spinner() -> None:
+    with create_pipe_input() as pt_input:
+        repl = Repl(input=pt_input, output=DummyOutput())
+        repl._start_waiting()
+
+        renderable = repl._turn_renderable()
+
+        assert isinstance(renderable, Group)
+        assert any(isinstance(item, Spinner) for item in renderable.renderables)
+        repl._close_live()
 
 
 async def test_empty_text_delta_does_not_render_empty_assistant_message() -> None:
