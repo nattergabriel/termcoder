@@ -9,11 +9,7 @@ type PromptUser = Callable[[ToolCall], Awaitable[PermissionDecision]]
 
 def ask_each(prompt: PromptUser) -> PermissionCheck:
     """Prompt before each tool call."""
-
-    async def check(call: ToolCall) -> PermissionDecision:
-        return await prompt(call)
-
-    return check
+    return prompt
 
 
 def allow_all() -> PermissionCheck:
