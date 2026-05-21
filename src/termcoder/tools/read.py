@@ -2,13 +2,12 @@
 
 from pathlib import Path
 
-from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, optional_int, parse_object, required_string
 from termcoder.tools.results import invalid_arguments, tool_failed
 
 
 class Read:
-    name: ToolName = "read"
     schema: ToolSchema = ToolSchema(
         name="read",
         description="Read a UTF-8 text file, optionally returning a 1-based line window.",

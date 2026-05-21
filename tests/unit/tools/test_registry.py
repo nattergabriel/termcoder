@@ -8,8 +8,8 @@ from termcoder.tools.search import Search
 from termcoder.tools.write import Write
 
 
-def test_from_iterable_indexes_tools_by_name() -> None:
-    registry = Registry.from_iterable([Read(), Write(), Edit(), Search(), Patch()])
+def test_init_indexes_tools_by_schema_name() -> None:
+    registry = Registry([Read(), Write(), Edit(), Search(), Patch()])
 
     assert registry.get("read").__class__ is Read
     assert registry.get("write").__class__ is Write
@@ -19,14 +19,14 @@ def test_from_iterable_indexes_tools_by_name() -> None:
 
 
 def test_get_returns_none_for_unknown_tool() -> None:
-    registry = Registry.from_iterable([Read()])
+    registry = Registry([Read()])
 
     assert registry.get("nonexistent") is None
 
 
 def test_schemas_returns_each_tools_schema() -> None:
     read, write = Read(), Write()
-    registry = Registry.from_iterable([read, write])
+    registry = Registry([read, write])
 
     assert list(registry.schemas()) == [read.schema, write.schema]
 

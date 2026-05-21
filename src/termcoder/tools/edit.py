@@ -2,13 +2,12 @@
 
 from pathlib import Path
 
-from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, optional_bool, parse_object, required_string
 from termcoder.tools.results import invalid_arguments, tool_error, tool_failed
 
 
 class Edit:
-    name: ToolName = "edit"
     schema: ToolSchema = ToolSchema(
         name="edit",
         description=(

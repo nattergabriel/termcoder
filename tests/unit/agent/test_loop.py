@@ -60,7 +60,7 @@ async def test_runs_tool_then_continues_with_result_in_next_round() -> None:
     )
     agent = Agent(
         provider=provider,
-        registry=Registry.from_iterable([tool]),
+        registry=Registry([tool]),
         check_permission=FakePermission(),
         system_prompt="",
     )
@@ -94,7 +94,7 @@ async def test_second_provider_call_includes_tool_result_message() -> None:
     )
     agent = Agent(
         provider=provider,
-        registry=Registry.from_iterable([tool]),
+        registry=Registry([tool]),
         check_permission=FakePermission(),
         system_prompt="",
     )
@@ -123,7 +123,7 @@ async def test_denied_tool_call_returns_error_result_without_invoking_tool() -> 
     )
     agent = Agent(
         provider=provider,
-        registry=Registry.from_iterable([tool]),
+        registry=Registry([tool]),
         check_permission=FakePermission(default="deny"),
         system_prompt="",
     )
@@ -176,7 +176,7 @@ async def test_multiple_tool_calls_in_one_round_run_in_order() -> None:
     )
     agent = Agent(
         provider=provider,
-        registry=Registry.from_iterable([read_tool, bash_tool]),
+        registry=Registry([read_tool, bash_tool]),
         check_permission=FakePermission(),
         system_prompt="",
     )
@@ -221,7 +221,6 @@ async def test_loop_blocks_on_permission_callable_before_dispatching_tool() -> N
         return "allow"
 
     class GatedTool:
-        name = "slow"
         schema = FakeTool(name="slow").schema
 
         async def run(self, call: ToolCall) -> ToolResult:
@@ -237,7 +236,7 @@ async def test_loop_blocks_on_permission_callable_before_dispatching_tool() -> N
     )
     agent = Agent(
         provider=provider,
-        registry=Registry.from_iterable([GatedTool()]),
+        registry=Registry([GatedTool()]),
         check_permission=gated_permission,
         system_prompt="",
     )
@@ -285,7 +284,7 @@ async def test_cancelled_turn_rolls_back_partial_state() -> None:
     )
     agent = Agent(
         provider=provider,
-        registry=Registry.from_iterable([FakeTool(name="read")]),
+        registry=Registry([FakeTool(name="read")]),
         check_permission=gated_permission,
         system_prompt="",
     )
@@ -321,7 +320,7 @@ async def test_raises_when_max_iterations_exceeded() -> None:
     )
     agent = Agent(
         provider=provider,
-        registry=Registry.from_iterable([tool]),
+        registry=Registry([tool]),
         check_permission=FakePermission(),
         system_prompt="",
         max_iterations=2,

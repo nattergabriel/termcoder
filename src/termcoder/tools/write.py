@@ -2,13 +2,12 @@
 
 from pathlib import Path
 
-from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, parse_object, required_string
 from termcoder.tools.results import invalid_arguments, tool_failed
 
 
 class Write:
-    name: ToolName = "write"
     schema: ToolSchema = ToolSchema(
         name="write",
         description="Write UTF-8 text content to a file, overwriting any existing content.",

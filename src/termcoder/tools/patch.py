@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, optional_string, parse_object, required_string
 from termcoder.tools.results import invalid_arguments, tool_failed
 
@@ -43,7 +43,6 @@ class _Rollback:
 
 
 class Patch:
-    name: ToolName = "patch"
     schema: ToolSchema = ToolSchema(
         name="patch",
         description=(
