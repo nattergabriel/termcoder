@@ -22,7 +22,6 @@ def _context(tmp_path: Path) -> CommandContext:
         provider=provider,
         registry=Registry.from_iterable([]),
         check_permission=_allow,
-        system_prompt="",
     )
     return CommandContext(agent=agent, config=Config(), save_path=tmp_path / "config.toml")
 
