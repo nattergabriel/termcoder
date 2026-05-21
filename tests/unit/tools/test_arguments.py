@@ -9,6 +9,7 @@ from termcoder.tools.arguments import (
     ArgumentError,
     optional_bool,
     optional_int,
+    optional_string,
     parse_object,
     required_string,
 )
@@ -60,6 +61,19 @@ def test_optional_int_rejects_bool() -> None:
 def test_optional_int_rejects_non_integer() -> None:
     with pytest.raises(ArgumentError, match="limit"):
         optional_int({"limit": "10"}, "limit")
+
+
+def test_optional_string_returns_none_when_missing() -> None:
+    assert optional_string({}, "root") is None
+
+
+def test_optional_string_returns_string_value() -> None:
+    assert optional_string({"root": "."}, "root") == "."
+
+
+def test_optional_string_rejects_non_string_value() -> None:
+    with pytest.raises(ArgumentError, match="root"):
+        optional_string({"root": 123}, "root")
 
 
 def test_optional_bool_returns_default_when_missing() -> None:

@@ -1,17 +1,21 @@
 """Tests for the tool Registry."""
 
 from termcoder.tools.edit import Edit
+from termcoder.tools.patch import Patch
 from termcoder.tools.read import Read
 from termcoder.tools.registry import Registry
+from termcoder.tools.search import Search
 from termcoder.tools.write import Write
 
 
 def test_from_iterable_indexes_tools_by_name() -> None:
-    registry = Registry.from_iterable([Read(), Write(), Edit()])
+    registry = Registry.from_iterable([Read(), Write(), Edit(), Search(), Patch()])
 
     assert registry.get("read").__class__ is Read
     assert registry.get("write").__class__ is Write
     assert registry.get("edit").__class__ is Edit
+    assert registry.get("search").__class__ is Search
+    assert registry.get("patch").__class__ is Patch
 
 
 def test_get_returns_none_for_unknown_tool() -> None:

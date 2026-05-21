@@ -16,8 +16,10 @@ from termcoder.permissions import PromptUser, allow_all, ask_each
 from termcoder.providers.registry import build_provider
 from termcoder.tools.bash import Bash
 from termcoder.tools.edit import Edit
+from termcoder.tools.patch import Patch
 from termcoder.tools.read import Read
 from termcoder.tools.registry import Registry
+from termcoder.tools.search import Search
 from termcoder.tools.write import Write
 
 
@@ -32,7 +34,7 @@ class AppContext:
 
 def build(config: Config, prompt_user: PromptUser) -> AppContext:
     provider = build_provider(config)
-    registry = Registry.from_iterable([Read(), Write(), Edit(), Bash()])
+    registry = Registry.from_iterable([Read(), Write(), Edit(), Bash(), Search(), Patch()])
     agent = Agent(
         provider=provider,
         registry=registry,
