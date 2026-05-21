@@ -40,7 +40,6 @@ async def test_write_then_read_round_trip(tmp_path: Path) -> None:
         provider=provider,
         registry=Registry.from_iterable([Read(), Write()]),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     events = [e async for e in agent.run_turn("write hello to note.txt then read it back")]
@@ -65,7 +64,6 @@ async def test_read_missing_file_surfaces_error_back_to_model(tmp_path: Path) ->
         provider=provider,
         registry=Registry.from_iterable([Read()]),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     events = [e async for e in agent.run_turn("read it")]
@@ -93,7 +91,6 @@ async def test_bash_command_output_feeds_back_to_provider(tmp_path: Path) -> Non
         provider=provider,
         registry=Registry.from_iterable([Bash()]),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     [_ async for _ in agent.run_turn("run echo")]
@@ -122,7 +119,6 @@ async def test_edit_result_feeds_back_to_provider(tmp_path: Path) -> None:
         provider=provider,
         registry=Registry.from_iterable([Edit()]),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     [_ async for _ in agent.run_turn("replace old with new")]
@@ -146,7 +142,6 @@ async def test_denial_passes_a_denial_message_to_the_next_round(tmp_path: Path) 
         provider=provider,
         registry=Registry.from_iterable([Write()]),
         check_permission=FakePermission(default="deny"),
-        system_prompt="",
     )
 
     [_ async for _ in agent.run_turn("write please")]

@@ -22,7 +22,7 @@ from termcoder.tools.registry import Registry
 type ProviderEvent = TextDelta | ToolCallRequested
 
 
-@dataclass
+@dataclass(slots=True)
 class Agent:
     """Per-conversation orchestrator: provider + tools + permission policy + state."""
 
@@ -34,12 +34,8 @@ class Agent:
     max_iterations: int = 25
     """Cap on provider rounds per turn."""
 
-    def __post_init__(self) -> None:
-        if not self.system_prompt:
-            self.system_prompt = DEFAULT_SYSTEM_PROMPT
-
     async def run_turn(self, user_input: str) -> AsyncIterator[AgentEvent]:
-        checkpoint = len(self.state.messages)
+        checkpoint = len(self.state)
         try:
             self.state.append(Message(role="user", content=user_input))
             for _ in range(self.max_iterations):

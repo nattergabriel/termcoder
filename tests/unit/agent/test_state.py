@@ -6,6 +6,7 @@ from termcoder.models import Message
 
 def test_starts_empty() -> None:
     assert State().messages == ()
+    assert len(State()) == 0
 
 
 def test_appends_messages_in_order() -> None:
@@ -17,6 +18,7 @@ def test_appends_messages_in_order() -> None:
     state.append(assistant_message)
 
     assert state.messages == (user_message, assistant_message)
+    assert len(state) == 2
 
 
 def test_messages_returns_immutable_snapshot() -> None:
