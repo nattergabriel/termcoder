@@ -50,3 +50,19 @@ async def test_allow_all_permission_mode_bypasses_prompt(monkeypatch: pytest.Mon
 
     assert decision == "allow"
     assert called is False
+
+
+async def test_ask_each_permission_mode_skips_read_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+    called = False
+
+    async def prompt(_call: ToolCall) -> PermissionDecision:
+        nonlocal called
+        called = True
+        return "deny"
+
+    ctx = build(Config(permission_mode="ask_each"), prompt)
+    decision = await ctx.agent.check_permission(ToolCall(id="c1", name="read", arguments="{}"))
+
+    assert decision == "allow"
+    assert called is False
