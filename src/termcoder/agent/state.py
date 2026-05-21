@@ -1,9 +1,9 @@
 """Conversation log."""
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from termcoder.models import Message, ToolCall, ToolResult
+from termcoder.models import Message
 
 
 @dataclass(slots=True)
@@ -16,18 +16,8 @@ class State:
     def messages(self) -> Sequence[Message]:
         return tuple(self._messages)
 
-    def append_user(self, content: str) -> None:
-        self._messages.append(Message(role="user", content=content))
-
-    def append_assistant(self, content: str, tool_calls: Iterable[ToolCall] = ()) -> None:
-        self._messages.append(
-            Message(role="assistant", content=content, tool_calls=tuple(tool_calls))
-        )
-
-    def append_tool_result(self, result: ToolResult) -> None:
-        self._messages.append(
-            Message(role="tool", content=result.content, tool_call_id=result.tool_call_id)
-        )
+    def append(self, message: Message) -> None:
+        self._messages.append(message)
 
     def truncate(self, length: int) -> None:
         """Drop messages appended after a known-good checkpoint."""
