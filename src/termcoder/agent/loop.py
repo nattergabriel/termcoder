@@ -19,6 +19,8 @@ from termcoder.models import Message, PermissionCheck, ToolCall, ToolResult
 from termcoder.providers.protocol import Provider
 from termcoder.tools.registry import Registry
 
+type ProviderEvent = TextDelta | ToolCallRequested
+
 
 @dataclass
 class Agent:
@@ -37,38 +39,26 @@ class Agent:
         try:
             self.state.append_user(user_input)
             for _ in range(self.max_iterations):
-                assistant_text = ""
+                assistant_text_parts: list[str] = []
                 tool_calls: list[ToolCall] = []
-                async for event in self.provider.stream(
-                    self._messages_for_provider(), self.registry.schemas()
-                ):
-                    match event:
+                async for provider_event in self._provider_events():
+                    match provider_event:
                         case TextDelta():
-                            assistant_text += event.text
-                            yield event
+                            assistant_text_parts.append(provider_event.text)
                         case ToolCallRequested():
-                            tool_calls.append(event.tool_call)
-                            yield event
-                        case ToolCallStarted() | ToolCallCompleted() | TurnComplete():
-                            # These events are emitted by the loop, not providers.
-                            raise TermcoderError(f"provider emitted unexpected event: {event!r}")
+                            tool_calls.append(provider_event.tool_call)
                         case _:
-                            assert_never(event)
+                            assert_never(provider_event)
+                    yield provider_event
 
-                self.state.append_assistant(assistant_text, tool_calls)
+                self.state.append_assistant("".join(assistant_text_parts), tool_calls)
 
                 if not tool_calls:
                     yield TurnComplete()
                     return
 
-                for tool_call in tool_calls:
-                    async for event in self._dispatch(tool_call):
-                        match event:
-                            case ToolCallCompleted():
-                                self.state.append_tool_result(event.result)
-                            case ToolCallStarted():
-                                pass
-                        yield event
+                async for tool_event in self._dispatch_all(tool_calls):
+                    yield tool_event
 
             raise TermcoderError(
                 f"agent exceeded max_iterations={self.max_iterations} without completing the turn"
@@ -77,6 +67,28 @@ class Agent:
             # Drop partial turn state after cancellation or failure.
             self.state.truncate(checkpoint)
             raise
+
+    async def _provider_events(self) -> AsyncIterator[ProviderEvent]:
+        async for event in self.provider.stream(
+            self._messages_for_provider(), self.registry.schemas()
+        ):
+            match event:
+                case TextDelta() | ToolCallRequested():
+                    yield event
+                case ToolCallStarted() | ToolCallCompleted() | TurnComplete():
+                    # These events are emitted by the loop, not providers.
+                    raise TermcoderError(f"provider emitted unexpected event: {event!r}")
+                case _:
+                    assert_never(event)
+
+    async def _dispatch_all(
+        self, calls: list[ToolCall]
+    ) -> AsyncIterator[ToolCallStarted | ToolCallCompleted]:
+        for call in calls:
+            async for event in self._dispatch(call):
+                if isinstance(event, ToolCallCompleted):
+                    self.state.append_tool_result(event.result)
+                yield event
 
     async def _dispatch(self, call: ToolCall) -> AsyncIterator[ToolCallStarted | ToolCallCompleted]:
         decision = await self.check_permission(call)

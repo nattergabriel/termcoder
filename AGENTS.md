@@ -42,6 +42,7 @@ Configuration loads from env (`OPENAI_API_KEY`, `OPENAI_BASE_URL`, `ANTHROPIC_AP
 - **mypy is strict.** Every function (including tests) needs full type annotations. Don't add `# type: ignore` without a comment explaining why.
 - **No filesystem mocks in tool tests.** Use pytest's `tmp_path` fixture and exercise real I/O.
 - **Tool errors are LLM input, not exceptions.** When a tool fails (file not found, command exits non-zero), return the error text as the tool result so the agent can react. Only let exceptions escape for genuine system failures (provider unreachable, internal bugs) — those halt the turn and surface to the user.
+- **`match` vs `isinstance`.** Use `match` for closed-shape dispatch over internal unions or literals (`Message.role`, `AgentEvent`). Use `isinstance` for simple type narrowing, filters, and validation guards.
 - **Comments only when the *why* is non-obvious.** Don't paraphrase what the code already says.
 - **Conventional Commits** — `feat:`, `chore:`, `fix:`, `docs:`, `test:`, `refactor:`. Match the style of existing commits.
 

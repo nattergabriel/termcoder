@@ -54,11 +54,13 @@ async def _translate(
             slot = pending.setdefault(tc_delta.index, _PendingToolCall())
             if tc_delta.id:
                 slot.id = tc_delta.id
-            if tc_delta.function is not None:
-                if tc_delta.function.name:
-                    slot.name = tc_delta.function.name
-                if tc_delta.function.arguments:
-                    slot.arguments += tc_delta.function.arguments
+            function = tc_delta.function
+            if function is None:
+                continue
+            if function.name:
+                slot.name = function.name
+            if function.arguments:
+                slot.arguments += function.arguments
     for index in sorted(pending):
         slot = pending[index]
         yield ToolCallRequested(
@@ -74,28 +76,30 @@ class _PendingToolCall:
 
 
 def _to_api_message(msg: Message) -> dict[str, Any]:
-    if msg.role == "system" or msg.role == "user":
-        return {"role": msg.role, "content": msg.content}
-    if msg.role == "assistant":
-        # OpenAI requires null when an assistant message carries only tool calls.
-        result: dict[str, Any] = {"role": "assistant", "content": msg.content or None}
-        if msg.tool_calls:
-            result["tool_calls"] = [
-                {
-                    "id": tc.id,
-                    "type": "function",
-                    "function": {"name": tc.name, "arguments": tc.arguments},
-                }
-                for tc in msg.tool_calls
-            ]
-        return result
-    if msg.role == "tool":
-        return {
-            "role": "tool",
-            "tool_call_id": msg.tool_call_id,
-            "content": msg.content,
-        }
-    assert_never(msg.role)
+    match msg.role:
+        case "system" | "user":
+            return {"role": msg.role, "content": msg.content}
+        case "assistant":
+            # OpenAI requires null when an assistant message carries only tool calls.
+            result: dict[str, Any] = {"role": "assistant", "content": msg.content or None}
+            if msg.tool_calls:
+                result["tool_calls"] = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {"name": tc.name, "arguments": tc.arguments},
+                    }
+                    for tc in msg.tool_calls
+                ]
+            return result
+        case "tool":
+            return {
+                "role": "tool",
+                "tool_call_id": msg.tool_call_id,
+                "content": msg.content,
+            }
+        case _:
+            assert_never(msg.role)
 
 
 def _to_api_tool(schema: ToolSchema) -> dict[str, Any]:
