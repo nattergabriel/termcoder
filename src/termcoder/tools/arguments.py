@@ -32,6 +32,16 @@ def required_string(args: Mapping[str, object], key: str) -> str:
     return value
 
 
+def optional_string(args: Mapping[str, object], key: str) -> str | None:
+    """Return an optional string argument by key."""
+    if key not in args:
+        return None
+    value = args[key]
+    if not isinstance(value, str):
+        raise ArgumentError(f"{key!r} must be a string")
+    return value
+
+
 def optional_int(args: Mapping[str, object], key: str) -> int | None:
     """Return an optional integer argument by key."""
     if key not in args:
