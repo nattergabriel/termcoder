@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator, Sequence
 import pytest
 
 from termcoder.agent.loop import Agent
+from termcoder.agent.prompt import DEFAULT_SYSTEM_PROMPT
 from termcoder.errors import TermcoderError
 from termcoder.events import (
     AgentEvent,
@@ -101,11 +102,13 @@ async def test_second_provider_call_includes_tool_result_message() -> None:
 
     [_ async for _ in agent.run_turn("go")]
 
-    # First call: just the user message. Second call: user + assistant(tool_call) + tool result.
+    system_message = Message(role="system", content=DEFAULT_SYSTEM_PROMPT)
+    # First call: system + user. Second call also includes assistant(tool_call) + tool result.
     first_messages, _ = provider.received_calls[0]
     second_messages, _ = provider.received_calls[1]
-    assert first_messages == (Message(role="user", content="go"),)
+    assert first_messages == (system_message, Message(role="user", content="go"))
     assert second_messages == (
+        system_message,
         Message(role="user", content="go"),
         Message(role="assistant", content="", tool_calls=(call,)),
         Message(role="tool", content="BODY", tool_call_id="c1"),

@@ -1,50 +1,30 @@
-"""Unit tests for the conversation `State`.
-
-State is a thin append-only log; these tests just lock in the message shapes
-each appender produces and that order is preserved.
-"""
+"""Unit tests for the conversation `State`."""
 
 from termcoder.agent.state import State
-from termcoder.models import Message, ToolCall, ToolResult
+from termcoder.models import Message
 
 
 def test_starts_empty() -> None:
     assert State().messages == ()
 
 
-def test_appends_each_role_with_correct_shape() -> None:
+def test_appends_messages_in_order() -> None:
     state = State()
+    user_message = Message(role="user", content="hi")
+    assistant_message = Message(role="assistant", content="hello")
 
-    state.append_user("hi")
-    state.append_assistant(
-        "thinking...",
-        [ToolCall(id="c1", name="read", arguments='{"path": "x"}')],
-    )
-    state.append_tool_result(ToolResult(tool_call_id="c1", content="file body"))
+    state.append(user_message)
+    state.append(assistant_message)
 
-    assert state.messages == (
-        Message(role="user", content="hi"),
-        Message(
-            role="assistant",
-            content="thinking...",
-            tool_calls=(ToolCall(id="c1", name="read", arguments='{"path": "x"}'),),
-        ),
-        Message(role="tool", content="file body", tool_call_id="c1"),
-    )
-
-
-def test_assistant_message_with_no_tool_calls_has_empty_tuple() -> None:
-    state = State()
-    state.append_assistant("just text")
-    assert state.messages[0].tool_calls == ()
+    assert state.messages == (user_message, assistant_message)
 
 
 def test_messages_returns_immutable_snapshot() -> None:
     state = State()
-    state.append_user("hi")
+    state.append(Message(role="user", content="hi"))
 
     snapshot = state.messages
-    state.append_user("there")
+    state.append(Message(role="user", content="there"))
 
     # The snapshot taken before the second append must not reflect it.
     assert snapshot == (Message(role="user", content="hi"),)
@@ -53,10 +33,10 @@ def test_messages_returns_immutable_snapshot() -> None:
 
 def test_truncates_to_checkpoint() -> None:
     state = State()
-    state.append_user("kept")
+    state.append(Message(role="user", content="kept"))
     checkpoint = len(state.messages)
-    state.append_user("dropped")
-    state.append_assistant("also dropped")
+    state.append(Message(role="user", content="dropped"))
+    state.append(Message(role="assistant", content="also dropped"))
 
     state.truncate(checkpoint)
 
