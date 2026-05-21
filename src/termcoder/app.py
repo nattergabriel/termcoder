@@ -34,7 +34,7 @@ class AppContext:
 
 def build(config: Config, prompt_user: PromptUser) -> AppContext:
     provider = build_provider(config)
-    registry = Registry.from_iterable([Read(), Write(), Edit(), Bash(), Search(), Patch()])
+    registry = Registry([Read(), Write(), Edit(), Bash(), Search(), Patch()])
     agent = Agent(
         provider=provider,
         registry=registry,

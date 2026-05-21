@@ -20,7 +20,7 @@ def _context(tmp_path: Path) -> CommandContext:
     provider = FakeProvider(scripts=[], model="initial", temperature=0.7)
     agent = Agent(
         provider=provider,
-        registry=Registry.from_iterable([]),
+        registry=Registry([]),
         check_permission=_allow,
         system_prompt="",
     )

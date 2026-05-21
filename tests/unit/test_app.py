@@ -33,7 +33,14 @@ def test_default_tools_are_registered(monkeypatch: pytest.MonkeyPatch) -> None:
 
     ctx = build(Config(), _stub_prompt)
 
-    assert set(ctx.agent.registry.tools) == {"read", "write", "edit", "bash", "search", "patch"}
+    assert {schema.name for schema in ctx.agent.registry.schemas()} == {
+        "read",
+        "write",
+        "edit",
+        "bash",
+        "search",
+        "patch",
+    }
 
 
 async def test_allow_all_permission_mode_bypasses_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
