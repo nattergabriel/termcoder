@@ -160,6 +160,7 @@ class Repl:
                 console=self._console,
                 refresh_per_second=20,
                 transient=False,
+                vertical_overflow="visible",
             )
             self._live.start()
             return

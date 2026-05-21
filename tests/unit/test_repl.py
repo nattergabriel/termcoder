@@ -154,6 +154,19 @@ async def test_waiting_spinner_is_replaced_by_assistant_stream() -> None:
     assert "done" in buffer.getvalue()
 
 
+async def test_live_render_allows_terminal_scrollback_for_tall_turns() -> None:
+    buffer = io.StringIO()
+    console = Console(file=buffer, force_terminal=False, width=100)
+    with create_pipe_input() as pt_input:
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        repl._begin_turn()
+
+        assert repl._live is not None
+        assert repl._live.vertical_overflow == "visible"
+
+        repl._close_live()
+
+
 async def test_empty_text_delta_does_not_render_empty_assistant_message() -> None:
     buffer = io.StringIO()
     console = Console(file=buffer, force_terminal=False, width=100)
