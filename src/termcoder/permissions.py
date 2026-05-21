@@ -1,21 +1,21 @@
 """Permission policies for tool calls."""
 
-from collections.abc import Awaitable, Callable
+from termcoder.models import PermissionCheck, PermissionDecision, ToolCall, ToolName
 
-from termcoder.models import PermissionCheck, PermissionDecision, ToolCall
-
-type PromptUser = Callable[[ToolCall], Awaitable[PermissionDecision]]
+_READ_ONLY_TOOLS: frozenset[ToolName] = frozenset({"read", "search"})
 
 
-def ask_each(prompt: PromptUser) -> PermissionCheck:
-    """Prompt before each tool call."""
-    return prompt
+def ask_each(prompt_user: PermissionCheck) -> PermissionCheck:
+    """Prompt for tool calls unless the tool is explicitly read-only."""
 
-
-def allow_all() -> PermissionCheck:
-    """Allow every tool call without prompting."""
-
-    async def check(_call: ToolCall) -> PermissionDecision:
-        return "allow"
+    async def check(call: ToolCall) -> PermissionDecision:
+        if call.name in _READ_ONLY_TOOLS:
+            return "allow"
+        return await prompt_user(call)
 
     return check
+
+
+async def allow_all(_call: ToolCall) -> PermissionDecision:
+    """Allow every tool call without prompting."""
+    return "allow"

@@ -12,7 +12,7 @@ from termcoder.commands.registry import SlashCommands
 from termcoder.commands.temperature import temperature_command
 from termcoder.config import Config, default_user_config_path
 from termcoder.models import PermissionCheck
-from termcoder.permissions import PromptUser, allow_all, ask_each
+from termcoder.permissions import allow_all, ask_each
 from termcoder.providers.registry import build_provider
 from termcoder.tools.bash import Bash
 from termcoder.tools.edit import Edit
@@ -32,7 +32,7 @@ class AppContext:
     slash_commands: SlashCommands
 
 
-def build(config: Config, prompt_user: PromptUser) -> AppContext:
+def build(config: Config, prompt_user: PermissionCheck) -> AppContext:
     provider = build_provider(config)
     registry = Registry.from_iterable([Read(), Write(), Edit(), Bash(), Search(), Patch()])
     agent = Agent(
@@ -57,9 +57,10 @@ def build(config: Config, prompt_user: PromptUser) -> AppContext:
     return AppContext(agent=agent, config=config, slash_commands=slash_commands)
 
 
-def _permission_check(config: Config, prompt_user: PromptUser) -> PermissionCheck:
-    if config.permission_mode == "ask_each":
-        return ask_each(prompt_user)
-    if config.permission_mode == "allow_all":
-        return allow_all()
+def _permission_check(config: Config, prompt_user: PermissionCheck) -> PermissionCheck:
+    match config.permission_mode:
+        case "ask_each":
+            return ask_each(prompt_user)
+        case "allow_all":
+            return allow_all
     assert_never(config.permission_mode)
