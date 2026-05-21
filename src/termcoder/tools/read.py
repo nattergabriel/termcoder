@@ -4,6 +4,7 @@ from pathlib import Path
 
 from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, optional_int, parse_object, required_string
+from termcoder.tools.results import invalid_arguments, tool_failed
 
 
 class Read:
@@ -42,19 +43,11 @@ class Read:
             if limit is not None and limit < 1:
                 raise ArgumentError("'limit' must be at least 1")
         except ArgumentError as exc:
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"invalid arguments: {exc}",
-                is_error=True,
-            )
+            return invalid_arguments(call, exc)
         try:
             content = Path(path).read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError, TypeError) as exc:
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"read failed: {exc}",
-                is_error=True,
-            )
+            return tool_failed(call, "read", exc)
         if start_line is not None or limit is not None:
             content = _line_window(content, start_line=start_line, limit=limit)
         return ToolResult(tool_call_id=call.id, content=content)

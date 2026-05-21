@@ -6,6 +6,7 @@ from pathlib import Path
 
 from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, optional_string, parse_object, required_string
+from termcoder.tools.results import invalid_arguments, tool_failed
 
 _HUNK_HEADER_RE = re.compile(
     r"^@@ -(?P<old_start>\d+)(?:,(?P<old_count>\d+))? "
@@ -38,7 +39,6 @@ class _FileUpdate:
 @dataclass(frozen=True, slots=True)
 class _Rollback:
     path: Path
-    existed: bool
     content: bytes | None
 
 
@@ -75,21 +75,13 @@ class Patch:
             root = Path(optional_string(args, "root") or ".")
             file_patches = _parse_patch(patch_text)
         except ArgumentError as exc:
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"invalid arguments: {exc}",
-                is_error=True,
-            )
+            return invalid_arguments(call, exc)
 
         try:
             updates = tuple(_plan_file_update(file_patch, root=root) for file_patch in file_patches)
             _commit_updates(updates)
         except (OSError, UnicodeDecodeError, ValueError) as exc:
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"patch failed: {exc}",
-                is_error=True,
-            )
+            return tool_failed(call, "patch", exc)
 
         return ToolResult(
             tool_call_id=call.id,
@@ -234,7 +226,6 @@ def _commit_updates(updates: tuple[_FileUpdate, ...]) -> None:
             rollbacks.append(
                 _Rollback(
                     path=update.path,
-                    existed=original_content is not None,
                     content=original_content,
                 )
             )
@@ -250,9 +241,7 @@ def _commit_updates(updates: tuple[_FileUpdate, ...]) -> None:
 def _rollback(rollbacks: list[_Rollback]) -> None:
     for rollback in reversed(rollbacks):
         try:
-            if rollback.existed:
-                if rollback.content is None:
-                    raise ValueError("rollback content missing for existing file")
+            if rollback.content is not None:
                 rollback.path.write_bytes(rollback.content)
             elif rollback.path.exists():
                 rollback.path.unlink()

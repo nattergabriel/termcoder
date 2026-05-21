@@ -28,7 +28,7 @@ CI (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy 
 
 Briefly: layer packages plus cross-cutting root modules.
 
-- **Layer packages:** `providers/` (LLM abstraction), `tools/` (one file per tool behind a Protocol + registry: `read.py`, `write.py`, `edit.py`, `bash.py`, `search.py`, `patch.py`, plus shared `arguments.py` parsing helpers), `agent/` (orchestration loop, event-log state, prompt assembly), `commands/` (registry + one file per `/`-prefixed REPL directive), `ui/` (REPL orchestration, prompt_toolkit input/history/choice prompts, turn display state, Rich rendering, and formatting helpers).
+- **Layer packages:** `providers/` (LLM abstraction), `tools/` (one file per tool behind a Protocol + registry: `read.py`, `write.py`, `edit.py`, `bash.py`, `search.py`, `patch.py`, plus shared `arguments.py` parsing helpers and `results.py` result helpers), `agent/` (orchestration loop, event-log state, prompt assembly), `commands/` (registry + one file per `/`-prefixed REPL directive), `ui/` (REPL orchestration, prompt_toolkit input/history/choice prompts, turn display state, Rich rendering, and formatting helpers).
 - **Cross-cutting at the root:** `models.py` (shared types), `events.py` (typed `AgentEvent` stream), `app.py` (composition root: builds the `AppContext`), `cli.py` (entry point), `config.py`, `permissions.py` (policy functions; `ask_each` and `allow_all` at v0.1, more modes join the same file as the roadmap lands), `errors.py`, `logging.py`.
 
 Two things the loop produces that everything else consumes: `AgentEvent`s (the streaming output of `agent/loop.py`, consumed by the REPL as an async iterator) and shared domain types (`Message`, `ToolCall`, `ToolResult`). Keep both stable — they are the contract.

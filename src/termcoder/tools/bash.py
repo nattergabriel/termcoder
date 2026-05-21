@@ -4,6 +4,7 @@ import asyncio
 
 from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, parse_object, required_string
+from termcoder.tools.results import invalid_arguments
 
 
 class Bash:
@@ -30,11 +31,7 @@ class Bash:
             args = parse_object(call)
             command = required_string(args, "command")
         except ArgumentError as exc:
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"invalid arguments: {exc}",
-                is_error=True,
-            )
+            return invalid_arguments(call, exc)
 
         proc = await asyncio.create_subprocess_shell(
             command,

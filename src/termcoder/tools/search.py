@@ -13,6 +13,7 @@ from termcoder.tools.arguments import (
     parse_object,
     required_string,
 )
+from termcoder.tools.results import invalid_arguments, tool_error
 
 _IGNORED_DIR_NAMES = {
     ".git",
@@ -82,38 +83,34 @@ class Search:
                 raise ArgumentError("'limit' must be at least 1")
             pattern = _compile_pattern(query, regex=regex, case_sensitive=case_sensitive)
         except ArgumentError as exc:
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"invalid arguments: {exc}",
-                is_error=True,
-            )
+            return invalid_arguments(call, exc)
 
         if not path.exists():
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"search failed: {path} does not exist",
-                is_error=True,
-            )
+            return tool_error(call, f"search failed: {path} does not exist")
 
         matches: list[str] = []
         files_searched = 0
         files_skipped = 0
         for file_path in _iter_files(path):
             try:
-                content = file_path.read_text(encoding="utf-8")
+                file_matches = _search_file(
+                    file_path,
+                    root=path,
+                    query=query,
+                    pattern=pattern,
+                    case_sensitive=case_sensitive,
+                    remaining=limit - len(matches),
+                )
             except (OSError, UnicodeDecodeError):
                 files_skipped += 1
                 continue
             files_searched += 1
-            for line_number, line in enumerate(content.splitlines(), start=1):
-                if _matches(line, query=query, pattern=pattern, case_sensitive=case_sensitive):
-                    display_path = _display_path(file_path, path)
-                    matches.append(f"{display_path}:{line_number}: {_truncate(line)}")
-                    if len(matches) >= limit:
-                        return ToolResult(
-                            tool_call_id=call.id,
-                            content=_format_results(matches, files_searched, files_skipped, limit),
-                        )
+            matches.extend(file_matches)
+            if len(matches) >= limit:
+                return ToolResult(
+                    tool_call_id=call.id,
+                    content=_format_results(matches, files_searched, files_skipped, limit),
+                )
 
         return ToolResult(
             tool_call_id=call.id,
@@ -129,6 +126,27 @@ def _compile_pattern(query: str, *, regex: bool, case_sensitive: bool) -> re.Pat
         return re.compile(query, flags)
     except re.error as exc:
         raise ArgumentError(f"invalid regex: {exc}") from exc
+
+
+def _search_file(
+    file_path: Path,
+    *,
+    root: Path,
+    query: str,
+    pattern: re.Pattern[str] | None,
+    case_sensitive: bool,
+    remaining: int,
+) -> list[str]:
+    matches: list[str] = []
+    display_path = _display_path(file_path, root)
+    with file_path.open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            line = line.rstrip("\r\n")
+            if _matches(line, query=query, pattern=pattern, case_sensitive=case_sensitive):
+                matches.append(f"{display_path}:{line_number}: {_truncate(line)}")
+                if len(matches) >= remaining:
+                    break
+    return matches
 
 
 def _iter_files(path: Path) -> Iterator[Path]:

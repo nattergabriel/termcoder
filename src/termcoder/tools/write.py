@@ -4,6 +4,7 @@ from pathlib import Path
 
 from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, parse_object, required_string
+from termcoder.tools.results import invalid_arguments, tool_failed
 
 
 class Write:
@@ -33,19 +34,11 @@ class Write:
             path = required_string(args, "path")
             content = required_string(args, "content")
         except ArgumentError as exc:
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"invalid arguments: {exc}",
-                is_error=True,
-            )
+            return invalid_arguments(call, exc)
         try:
             Path(path).write_text(content, encoding="utf-8")
         except (OSError, TypeError) as exc:
-            return ToolResult(
-                tool_call_id=call.id,
-                content=f"write failed: {exc}",
-                is_error=True,
-            )
+            return tool_failed(call, "write", exc)
         return ToolResult(
             tool_call_id=call.id,
             content=f"wrote {len(content)} characters to {path}",
