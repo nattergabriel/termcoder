@@ -5,7 +5,7 @@ import re
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
-from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import (
     ArgumentError,
     optional_bool,
@@ -31,7 +31,6 @@ _MAX_LINE_LENGTH = 240
 
 
 class Search:
-    name: ToolName = "search"
     schema: ToolSchema = ToolSchema(
         name="search",
         description=(

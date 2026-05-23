@@ -364,7 +364,7 @@ async def test_pending_tool_display_state_is_cleared_when_turn_is_cancelled() ->
         repl = Repl(console=console, input=pt_input, output=DummyOutput())
         agent = Agent(
             provider=FakeProvider(scripts=[[ToolCallRequested(tool_call=call)]]),
-            registry=Registry([]),
+            registry=Registry(),
             check_permission=wait_for_cancel,
         )
         task = asyncio.create_task(repl._run_turn(agent, "run it"))

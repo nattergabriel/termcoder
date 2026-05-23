@@ -2,13 +2,12 @@
 
 import asyncio
 
-from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, parse_object, required_string
 from termcoder.tools.results import invalid_arguments
 
 
 class Bash:
-    name: ToolName = "bash"
     schema: ToolSchema = ToolSchema(
         name="bash",
         description=(

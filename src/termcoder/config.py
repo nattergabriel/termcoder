@@ -21,6 +21,9 @@ type TomlScalar = str | int | float | bool
 type PermissionMode = Literal["ask_each", "allow_all"]
 type ProviderName = Literal["openai", "anthropic"]
 
+_PERMISSION_MODES: frozenset[PermissionMode] = frozenset(("ask_each", "allow_all"))
+_PROVIDER_NAMES: frozenset[ProviderName] = frozenset(("openai", "anthropic"))
+
 
 class ConfigError(TermcoderError):
     """Raised when a config file has a value of the wrong type or shape."""
@@ -107,18 +110,14 @@ def _as_int(value: object, field: str) -> int:
 
 
 def _as_permission_mode(value: object) -> PermissionMode:
-    if value == "ask_each":
-        return "ask_each"
-    if value == "allow_all":
-        return "allow_all"
+    if value in _PERMISSION_MODES:
+        return value
     raise ConfigError(f"unknown permission_mode: {value!r}")
 
 
 def _as_provider(value: object) -> ProviderName:
-    if value == "openai":
-        return "openai"
-    if value == "anthropic":
-        return "anthropic"
+    if value in _PROVIDER_NAMES:
+        return value
     raise ConfigError(f"unknown provider: {value!r}")
 
 

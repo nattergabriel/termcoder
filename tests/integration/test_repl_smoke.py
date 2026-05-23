@@ -38,7 +38,7 @@ async def test_repl_streams_text_and_exits_on_eof() -> None:
         provider = FakeProvider(scripts=[[TextDelta(text="world")]])
         agent = Agent(
             provider=provider,
-            registry=Registry([]),
+            registry=Registry(),
             check_permission=repl.confirm_tool,
         )
 
@@ -70,7 +70,7 @@ async def test_repl_inline_permission_denial_round_trips_back_to_provider() -> N
         )
         agent = Agent(
             provider=provider,
-            registry=Registry([]),
+            registry=Registry(),
             check_permission=repl.confirm_tool,
         )
 
@@ -145,7 +145,7 @@ async def test_repl_routes_slash_command_instead_of_calling_provider() -> None:
         provider = FakeProvider(scripts=[])
         agent = Agent(
             provider=provider,
-            registry=Registry([]),
+            registry=Registry(),
             check_permission=repl.confirm_tool,
         )
 

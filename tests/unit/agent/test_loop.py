@@ -218,7 +218,6 @@ async def test_loop_blocks_on_permission_callable_before_dispatching_tool() -> N
         return "allow"
 
     class GatedTool:
-        name = "slow"
         schema = FakeTool(name="slow").schema
 
         async def run(self, call: ToolCall) -> ToolResult:

@@ -6,7 +6,7 @@
 valid object schema; tests can override when they care.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 
 from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 
@@ -15,15 +15,15 @@ from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
 class FakeTool:
     """Plays scripted `ToolResult`s and records each call."""
 
-    name: ToolName = "fake"
+    name: InitVar[ToolName] = "fake"
     scripted_results: list[ToolResult] = field(default_factory=list)
     received: list[ToolCall] = field(default_factory=list)
     schema: ToolSchema = field(init=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, name: ToolName) -> None:
         self.schema = ToolSchema(
-            name=self.name,
-            description=f"fake tool {self.name}",
+            name=name,
+            description=f"fake tool {name}",
             parameters={"type": "object", "properties": {}},
         )
 
