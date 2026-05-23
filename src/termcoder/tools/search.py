@@ -2,7 +2,7 @@
 
 import os
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from termcoder.models import ToolCall, ToolResult, ToolSchema
@@ -80,7 +80,7 @@ class Search:
                 raise ArgumentError("'query' must not be empty")
             if limit < 1:
                 raise ArgumentError("'limit' must be at least 1")
-            pattern = _compile_pattern(query, regex=regex, case_sensitive=case_sensitive)
+            matcher = _line_matcher(query, regex=regex, case_sensitive=case_sensitive)
         except ArgumentError as exc:
             return invalid_arguments(call, exc)
 
@@ -95,9 +95,7 @@ class Search:
                 file_matches = _search_file(
                     file_path,
                     root=path,
-                    query=query,
-                    pattern=pattern,
-                    case_sensitive=case_sensitive,
+                    matcher=matcher,
                     remaining=limit - len(matches),
                 )
             except (OSError, UnicodeDecodeError):
@@ -106,10 +104,7 @@ class Search:
             files_searched += 1
             matches.extend(file_matches)
             if len(matches) >= limit:
-                return ToolResult(
-                    tool_call_id=call.id,
-                    content=_format_results(matches, files_searched, files_skipped, limit),
-                )
+                break
 
         return ToolResult(
             tool_call_id=call.id,
@@ -117,23 +112,27 @@ class Search:
         )
 
 
-def _compile_pattern(query: str, *, regex: bool, case_sensitive: bool) -> re.Pattern[str] | None:
+def _line_matcher(query: str, *, regex: bool, case_sensitive: bool) -> Callable[[str], bool]:
     if not regex:
-        return None
+        if case_sensitive:
+            return lambda line: query in line
+        folded_query = query.lower()
+        return lambda line: folded_query in line.lower()
+
     flags = 0 if case_sensitive else re.IGNORECASE
     try:
-        return re.compile(query, flags)
+        pattern = re.compile(query, flags)
     except re.error as exc:
         raise ArgumentError(f"invalid regex: {exc}") from exc
+
+    return lambda line: pattern.search(line) is not None
 
 
 def _search_file(
     file_path: Path,
     *,
     root: Path,
-    query: str,
-    pattern: re.Pattern[str] | None,
-    case_sensitive: bool,
+    matcher: Callable[[str], bool],
     remaining: int,
 ) -> list[str]:
     matches: list[str] = []
@@ -141,7 +140,7 @@ def _search_file(
     with file_path.open(encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
             line = line.rstrip("\r\n")
-            if _matches(line, query=query, pattern=pattern, case_sensitive=case_sensitive):
+            if matcher(line):
                 matches.append(f"{display_path}:{line_number}: {_truncate(line)}")
                 if len(matches) >= remaining:
                     break
@@ -158,20 +157,6 @@ def _iter_files(path: Path) -> Iterator[Path]:
             candidate = Path(root) / filename
             if candidate.is_file():
                 yield candidate
-
-
-def _matches(
-    line: str,
-    *,
-    query: str,
-    pattern: re.Pattern[str] | None,
-    case_sensitive: bool,
-) -> bool:
-    if pattern is not None:
-        return pattern.search(line) is not None
-    if case_sensitive:
-        return query in line
-    return query.lower() in line.lower()
 
 
 def _display_path(file_path: Path, root: Path) -> str:

@@ -17,9 +17,6 @@ _HUNK_HEADER_RE = re.compile(
 @dataclass(frozen=True, slots=True)
 class _Hunk:
     old_start: int
-    old_count: int
-    new_start: int
-    new_count: int
     lines: tuple[str, ...]
 
 
@@ -34,12 +31,6 @@ class _FilePatch:
 class _FileUpdate:
     path: Path
     content: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class _Rollback:
-    path: Path
-    content: bytes | None
 
 
 class Patch:
@@ -140,7 +131,6 @@ def _parse_hunk(lines: list[str], index: int) -> tuple[_Hunk, int]:
 
     old_start = int(match.group("old_start"))
     old_count = _parse_count(match.group("old_count"))
-    new_start = int(match.group("new_start"))
     new_count = _parse_count(match.group("new_count"))
     index += 1
 
@@ -179,9 +169,6 @@ def _parse_hunk(lines: list[str], index: int) -> tuple[_Hunk, int]:
     return (
         _Hunk(
             old_start=old_start,
-            old_count=old_count,
-            new_start=new_start,
-            new_count=new_count,
             lines=tuple(hunk_lines),
         ),
         index,
@@ -218,16 +205,11 @@ def _plan_file_update(file_patch: _FilePatch, *, root: Path) -> _FileUpdate:
 
 
 def _commit_updates(updates: tuple[_FileUpdate, ...]) -> None:
-    rollbacks: list[_Rollback] = []
+    rollbacks: list[tuple[Path, bytes | None]] = []
     try:
         for update in updates:
             original_content = update.path.read_bytes() if update.path.exists() else None
-            rollbacks.append(
-                _Rollback(
-                    path=update.path,
-                    content=original_content,
-                )
-            )
+            rollbacks.append((update.path, original_content))
             if update.content is None:
                 update.path.unlink()
             else:
@@ -237,13 +219,13 @@ def _commit_updates(updates: tuple[_FileUpdate, ...]) -> None:
         raise
 
 
-def _rollback(rollbacks: list[_Rollback]) -> None:
-    for rollback in reversed(rollbacks):
+def _rollback(rollbacks: list[tuple[Path, bytes | None]]) -> None:
+    for path, content in reversed(rollbacks):
         try:
-            if rollback.content is not None:
-                rollback.path.write_bytes(rollback.content)
-            elif rollback.path.exists():
-                rollback.path.unlink()
+            if content is not None:
+                path.write_bytes(content)
+            elif path.exists():
+                path.unlink()
         except OSError:
             continue
 

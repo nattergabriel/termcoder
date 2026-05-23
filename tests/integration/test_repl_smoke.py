@@ -40,7 +40,6 @@ async def test_repl_streams_text_and_exits_on_eof() -> None:
             provider=provider,
             registry=Registry(),
             check_permission=repl.confirm_tool,
-            system_prompt="",
         )
 
         await repl.run(agent, _NO_SLASH_COMMANDS)
@@ -73,7 +72,6 @@ async def test_repl_inline_permission_denial_round_trips_back_to_provider() -> N
             provider=provider,
             registry=Registry(),
             check_permission=repl.confirm_tool,
-            system_prompt="",
         )
 
         await repl.run(agent, _NO_SLASH_COMMANDS)
@@ -116,7 +114,6 @@ async def test_arrow_choice_does_not_break_next_prompt_history() -> None:
                 ]
             ),
             check_permission=repl.confirm_tool,
-            system_prompt="",
         )
 
         await repl.run(agent, _NO_SLASH_COMMANDS)
@@ -150,7 +147,6 @@ async def test_repl_routes_slash_command_instead_of_calling_provider() -> None:
             provider=provider,
             registry=Registry(),
             check_permission=repl.confirm_tool,
-            system_prompt="",
         )
 
         await repl.run(agent, slash_commands)

@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator, Sequence
 import pytest
 
 from termcoder.agent.loop import Agent
+from termcoder.agent.prompt import DEFAULT_SYSTEM_PROMPT
 from termcoder.errors import TermcoderError
 from termcoder.events import (
     AgentEvent,
@@ -34,7 +35,6 @@ async def test_text_only_turn_yields_deltas_then_turn_complete() -> None:
         provider=provider,
         registry=Registry(),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     events = [e async for e in agent.run_turn("hi")]
@@ -62,7 +62,6 @@ async def test_runs_tool_then_continues_with_result_in_next_round() -> None:
         provider=provider,
         registry=Registry([tool]),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     events = [e async for e in agent.run_turn("read x")]
@@ -96,16 +95,17 @@ async def test_second_provider_call_includes_tool_result_message() -> None:
         provider=provider,
         registry=Registry([tool]),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     [_ async for _ in agent.run_turn("go")]
 
-    # First call: just the user message. Second call: user + assistant(tool_call) + tool result.
+    system_message = Message(role="system", content=DEFAULT_SYSTEM_PROMPT)
+    # First call: system + user. Second call also includes assistant(tool_call) + tool result.
     first_messages, _ = provider.received_calls[0]
     second_messages, _ = provider.received_calls[1]
-    assert first_messages == (Message(role="user", content="go"),)
+    assert first_messages == (system_message, Message(role="user", content="go"))
     assert second_messages == (
+        system_message,
         Message(role="user", content="go"),
         Message(role="assistant", content="", tool_calls=(call,)),
         Message(role="tool", content="BODY", tool_call_id="c1"),
@@ -125,7 +125,6 @@ async def test_denied_tool_call_returns_error_result_without_invoking_tool() -> 
         provider=provider,
         registry=Registry([tool]),
         check_permission=FakePermission(default="deny"),
-        system_prompt="",
     )
 
     events = [e async for e in agent.run_turn("be dangerous")]
@@ -151,7 +150,6 @@ async def test_unknown_tool_returns_error_result() -> None:
         provider=provider,
         registry=Registry(),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     events = [e async for e in agent.run_turn("call missing")]
@@ -178,7 +176,6 @@ async def test_multiple_tool_calls_in_one_round_run_in_order() -> None:
         provider=provider,
         registry=Registry([read_tool, bash_tool]),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     events = [e async for e in agent.run_turn("do two things")]
@@ -238,7 +235,6 @@ async def test_loop_blocks_on_permission_callable_before_dispatching_tool() -> N
         provider=provider,
         registry=Registry([GatedTool()]),
         check_permission=gated_permission,
-        system_prompt="",
     )
 
     gen = agent.run_turn("go")
@@ -286,7 +282,6 @@ async def test_cancelled_turn_rolls_back_partial_state() -> None:
         provider=provider,
         registry=Registry([FakeTool(name="read")]),
         check_permission=gated_permission,
-        system_prompt="",
     )
 
     gen = agent.run_turn("go")
@@ -322,7 +317,6 @@ async def test_raises_when_max_iterations_exceeded() -> None:
         provider=provider,
         registry=Registry([tool]),
         check_permission=FakePermission(),
-        system_prompt="",
         max_iterations=2,
     )
 
@@ -350,7 +344,6 @@ async def test_provider_error_mid_stream_rolls_back_partial_state() -> None:
         provider=ExplodingProvider(),
         registry=Registry(),
         check_permission=FakePermission(),
-        system_prompt="",
     )
 
     with pytest.raises(RuntimeError, match="network died"):

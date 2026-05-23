@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import assert_never
 
-from termcoder.agent.prompt import assemble_system_prompt
+from termcoder.agent.prompt import DEFAULT_SYSTEM_PROMPT
 from termcoder.agent.state import State
 from termcoder.errors import TermcoderError
 from termcoder.events import (
@@ -22,7 +22,7 @@ from termcoder.tools.registry import Registry
 type ProviderEvent = TextDelta | ToolCallRequested
 
 
-@dataclass
+@dataclass(slots=True)
 class Agent:
     """Per-conversation orchestrator: provider + tools + permission policy + state."""
 
@@ -30,14 +30,14 @@ class Agent:
     registry: Registry
     check_permission: PermissionCheck
     state: State = field(default_factory=State)
-    system_prompt: str = field(default_factory=assemble_system_prompt)
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT
     max_iterations: int = 25
     """Cap on provider rounds per turn."""
 
     async def run_turn(self, user_input: str) -> AsyncIterator[AgentEvent]:
-        checkpoint = len(self.state.messages)
+        checkpoint = len(self.state)
         try:
-            self.state.append_user(user_input)
+            self.state.append(Message(role="user", content=user_input))
             for _ in range(self.max_iterations):
                 assistant_text_parts: list[str] = []
                 tool_calls: list[ToolCall] = []
@@ -51,7 +51,13 @@ class Agent:
                             assert_never(provider_event)
                     yield provider_event
 
-                self.state.append_assistant("".join(assistant_text_parts), tool_calls)
+                self.state.append(
+                    Message(
+                        role="assistant",
+                        content="".join(assistant_text_parts),
+                        tool_calls=tuple(tool_calls),
+                    )
+                )
 
                 if not tool_calls:
                     yield TurnComplete()
@@ -87,7 +93,13 @@ class Agent:
         for call in calls:
             async for event in self._dispatch(call):
                 if isinstance(event, ToolCallCompleted):
-                    self.state.append_tool_result(event.result)
+                    self.state.append(
+                        Message(
+                            role="tool",
+                            content=event.result.content,
+                            tool_call_id=event.result.tool_call_id,
+                        )
+                    )
                 yield event
 
     async def _dispatch(self, call: ToolCall) -> AsyncIterator[ToolCallStarted | ToolCallCompleted]:
@@ -115,6 +127,4 @@ class Agent:
         yield ToolCallCompleted(result=await tool.run(call))
 
     def _messages_for_provider(self) -> list[Message]:
-        if not self.system_prompt:
-            return list(self.state.messages)
         return [Message(role="system", content=self.system_prompt), *self.state.messages]

@@ -12,7 +12,7 @@ from termcoder.commands.registry import SlashCommands
 from termcoder.commands.temperature import temperature_command
 from termcoder.config import Config, default_user_config_path
 from termcoder.models import PermissionCheck
-from termcoder.permissions import allow_all
+from termcoder.permissions import allow_all, ask_each
 from termcoder.providers.registry import build_provider
 from termcoder.tools.bash import Bash
 from termcoder.tools.edit import Edit
@@ -58,8 +58,9 @@ def build(config: Config, prompt_user: PermissionCheck) -> AppContext:
 
 
 def _permission_check(config: Config, prompt_user: PermissionCheck) -> PermissionCheck:
-    if config.permission_mode == "ask_each":
-        return prompt_user
-    if config.permission_mode == "allow_all":
-        return allow_all()
+    match config.permission_mode:
+        case "ask_each":
+            return ask_each(prompt_user)
+        case "allow_all":
+            return allow_all
     assert_never(config.permission_mode)
