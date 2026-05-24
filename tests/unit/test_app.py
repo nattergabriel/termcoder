@@ -73,3 +73,25 @@ async def test_ask_each_permission_mode_skips_read_prompt(monkeypatch: pytest.Mo
 
     assert decision == "allow"
     assert called is False
+
+
+def test_agents_md_instructions_flow_to_agent_system_prompt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+    nested = tmp_path / "pkg"
+    nested.mkdir()
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "AGENTS.md").write_text("Root instructions.\n", encoding="utf-8")
+    (nested / "AGENTS.md").write_text("Nested instructions.\n", encoding="utf-8")
+
+    ctx = build(Config(system_prompt="User config instructions."), _stub_prompt, cwd=nested)
+
+    assert "Root instructions." in ctx.agent.system_prompt
+    assert "Nested instructions." in ctx.agent.system_prompt
+    assert ctx.agent.system_prompt.index("Root instructions.") < ctx.agent.system_prompt.index(
+        "Nested instructions."
+    )
+    assert ctx.agent.system_prompt.index("Nested instructions.") < ctx.agent.system_prompt.index(
+        "User config instructions."
+    )
