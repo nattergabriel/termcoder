@@ -1,6 +1,7 @@
 """Application composition root."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import assert_never
 
 from termcoder.agent.loop import Agent
@@ -11,6 +12,7 @@ from termcoder.commands.provider import provider_command
 from termcoder.commands.registry import SlashCommands
 from termcoder.commands.temperature import temperature_command
 from termcoder.config import Config, default_user_config_path
+from termcoder.instructions import load_agent_instruction_files
 from termcoder.models import PermissionCheck
 from termcoder.permissions import allow_all, ask_each
 from termcoder.providers.registry import build_provider
@@ -32,14 +34,23 @@ class AppContext:
     slash_commands: SlashCommands
 
 
-def build(config: Config, prompt_user: PermissionCheck) -> AppContext:
+def build(
+    config: Config,
+    prompt_user: PermissionCheck,
+    *,
+    cwd: Path | None = None,
+) -> AppContext:
     provider = build_provider(config)
     registry = Registry([Read(), Write(), Edit(), Bash(), Search(), Patch()])
+    instruction_files = load_agent_instruction_files(cwd)
     agent = Agent(
         provider=provider,
         registry=registry,
         check_permission=_permission_check(config, prompt_user),
-        system_prompt=assemble_system_prompt(config.system_prompt),
+        system_prompt=assemble_system_prompt(
+            config.system_prompt,
+            instruction_files=instruction_files,
+        ),
         max_iterations=config.max_iterations,
     )
     command_context = CommandContext(

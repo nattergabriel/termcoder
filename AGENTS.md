@@ -29,7 +29,7 @@ CI (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy 
 Briefly: layer packages plus cross-cutting root modules.
 
 - **Layer packages:** `providers/` (LLM abstraction), `tools/` (one file per tool behind a Protocol + registry: `read.py`, `write.py`, `edit.py`, `bash.py`, `search.py`, `patch.py`, plus shared `arguments.py` parsing helpers and `results.py` result helpers), `agent/` (orchestration loop, event-log state, prompt assembly), `commands/` (registry + one file per `/`-prefixed REPL directive), `ui/` (REPL orchestration, prompt_toolkit input/history/choice prompts, turn display state, Rich rendering, and formatting helpers).
-- **Cross-cutting at the root:** `models.py` (shared types), `events.py` (typed `AgentEvent` stream), `app.py` (composition root: builds the `AppContext`), `cli.py` (entry point), `config.py`, `permissions.py` (policy functions; `ask_each` and `allow_all` at v0.1, more modes join the same file as the roadmap lands), `errors.py`, `logging.py`.
+- **Cross-cutting at the root:** `models.py` (shared types), `events.py` (typed `AgentEvent` stream), `app.py` (composition root: builds the `AppContext`), `cli.py` (entry point), `config.py`, `instructions.py` (AGENTS.md discovery and loading), `permissions.py` (policy functions; `ask_each` and `allow_all` at v0.1, more modes join the same file as the roadmap lands), `errors.py`, `logging.py`.
 
 Two things the loop produces that everything else consumes: `AgentEvent`s (the streaming output of `agent/loop.py`, consumed by the REPL as an async iterator) and shared domain types (`Message`, `ToolCall`, `ToolResult`). Keep both stable — they are the contract.
 
@@ -58,7 +58,7 @@ One PR per logical change (feature, bug fix, refactor, docs update). The user re
 
 ## Design principles
 
-- **Isolate I/O at the edges.** `agent/`, `permissions.py`, `models.py`, `events.py`, `errors.py` are pure — no `print`, no file I/O, no network. Side effects live in `tools/`, `providers/`, `ui/repl.py`, `config.py`, `logging.py`. This is what makes the agent loop testable with a `FakeProvider`.
+- **Isolate I/O at the edges.** `agent/`, `permissions.py`, `models.py`, `events.py`, `errors.py` are pure — no `print`, no file I/O, no network. Side effects live in `tools/`, `providers/`, `ui/repl.py`, `config.py`, `instructions.py`, `logging.py`. This is what makes the agent loop testable with a `FakeProvider`.
 - **`typing.Protocol` over base classes.** Layer seams (provider, tool, permission policy) are structural. Avoid ABCs and deep inheritance.
 - **Domain types over primitives.** Give meaningful concepts their own type (`ToolName`, `PermissionDecision`, `Turn`, …). Avoid `dict[str, Any]` at module boundaries — mypy can't help you there.
 - **Flat over nested.** Early returns over `else` ladders; short functions over 50-line bodies. If a function needs scrolling to read, it's doing too much.
