@@ -75,6 +75,14 @@ def test_permission_mode_allow_all_parses(tmp_path: Path) -> None:
     assert config.permission_mode == "allow_all"
 
 
+def test_permission_mode_allow_readonly_parses(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'permission_mode = "allow_readonly"\n')
+
+    config = load_config(cwd=tmp_path, user_config_path=user_path)
+    assert config.permission_mode == "allow_readonly"
+
+
 def test_unknown_permission_mode_raises(tmp_path: Path) -> None:
     user_path = tmp_path / "user.toml"
     _write(user_path, 'permission_mode = "yolo"\n')

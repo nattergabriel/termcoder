@@ -1,10 +1,42 @@
 """Unit tests for permission policies."""
 
 from termcoder.models import PermissionDecision, ToolCall
-from termcoder.permissions import allow_all, ask_each
+from termcoder.permissions import allow_all, allow_readonly, ask_each
 
 
-async def test_ask_each_allows_read_without_prompt() -> None:
+async def test_ask_each_prompts_for_read() -> None:
+    received: list[ToolCall] = []
+
+    async def prompt(call: ToolCall) -> PermissionDecision:
+        received.append(call)
+        return "deny"
+
+    check = ask_each(prompt)
+    call = ToolCall(id="c1", name="read", arguments='{"path":"x"}')
+
+    decision = await check(call)
+
+    assert decision == "deny"
+    assert received == [call]
+
+
+async def test_ask_each_prompts_for_search() -> None:
+    received: list[ToolCall] = []
+
+    async def prompt(call: ToolCall) -> PermissionDecision:
+        received.append(call)
+        return "deny"
+
+    check = ask_each(prompt)
+    call = ToolCall(id="c1", name="search", arguments='{"path":".","query":"needle"}')
+
+    decision = await check(call)
+
+    assert decision == "deny"
+    assert received == [call]
+
+
+async def test_allow_readonly_allows_read_without_prompt() -> None:
     called = False
 
     async def prompt(_call: ToolCall) -> PermissionDecision:
@@ -12,7 +44,7 @@ async def test_ask_each_allows_read_without_prompt() -> None:
         called = True
         return "deny"
 
-    check = ask_each(prompt)
+    check = allow_readonly(prompt)
 
     decision = await check(ToolCall(id="c1", name="read", arguments='{"path":"x"}'))
 
@@ -20,7 +52,7 @@ async def test_ask_each_allows_read_without_prompt() -> None:
     assert called is False
 
 
-async def test_ask_each_allows_search_without_prompt() -> None:
+async def test_allow_readonly_allows_search_without_prompt() -> None:
     called = False
 
     async def prompt(_call: ToolCall) -> PermissionDecision:
@@ -28,7 +60,7 @@ async def test_ask_each_allows_search_without_prompt() -> None:
         called = True
         return "deny"
 
-    check = ask_each(prompt)
+    check = allow_readonly(prompt)
 
     decision = await check(
         ToolCall(id="c1", name="search", arguments='{"path":".","query":"needle"}')
@@ -36,6 +68,22 @@ async def test_ask_each_allows_search_without_prompt() -> None:
 
     assert decision == "allow"
     assert called is False
+
+
+async def test_allow_readonly_prompts_for_sensitive_tools() -> None:
+    received: list[ToolCall] = []
+
+    async def prompt(call: ToolCall) -> PermissionDecision:
+        received.append(call)
+        return "deny"
+
+    check = allow_readonly(prompt)
+    call = ToolCall(id="c1", name="bash", arguments='{"command":"true"}')
+
+    decision = await check(call)
+
+    assert decision == "deny"
+    assert received == [call]
 
 
 async def test_ask_each_prompts_for_sensitive_tools() -> None:
