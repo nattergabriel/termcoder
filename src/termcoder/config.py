@@ -18,10 +18,12 @@ from termcoder.errors import TermcoderError
 
 type TomlScalar = str | int | float | bool
 
-type PermissionMode = Literal["ask_each", "allow_all"]
+type PermissionMode = Literal["ask_each", "allow_readonly", "allow_all"]
 type ProviderName = Literal["openai", "anthropic"]
 
-_PERMISSION_MODES: frozenset[PermissionMode] = frozenset(("ask_each", "allow_all"))
+_PERMISSION_MODES: frozenset[PermissionMode] = frozenset(
+    ("ask_each", "allow_readonly", "allow_all")
+)
 _PROVIDER_NAMES: frozenset[ProviderName] = frozenset(("openai", "anthropic"))
 
 
