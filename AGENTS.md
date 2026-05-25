@@ -54,7 +54,7 @@ One PR per logical change (feature, bug fix, refactor, docs update). The user re
 - **Don't auto-commit.** Stop after writing changes and let the user review. When they say to commit ("commit," "ship it," "looks good"), run `git commit` (Conventional Commits per § Code style) and `git push -u origin <branch>`. Push every commit — it keeps the remote branch current and is harmless on a feature branch. Natural milestones (e.g. `feat:` for code + `test:` for tests) get their own commit; a single PR will often contain several.
 - **Don't auto-PR.** A branch can hold multiple commits before its PR opens. Wait for an explicit signal ("open PR," "PR it"), then run `gh pr create --title "..." --body "..."` with a real body covering the *whole branch's* work — what changed and why, test plan if relevant. Once the PR is open, additional commits on the branch update it automatically; don't open another.
 - **Stop after the PR is open.** Don't run `gh pr merge` — the user merges on GitHub after reviewing the PR and CI.
-- **No history rewrites.** No `git commit --amend`, no `git rebase`, no `git reset` past committed work. Each commit lands on `main` (rebase-merge), so write meaningful commit messages and treat review fixes as new commits, not amendments.
+- **No history rewrites.** No `git commit --amend`, no `git rebase`, no `git reset` past committed work. Write meaningful commit messages and treat review fixes as new commits, not amendments.
 
 ## Design principles
 
