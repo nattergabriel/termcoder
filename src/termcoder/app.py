@@ -14,7 +14,7 @@ from termcoder.commands.temperature import temperature_command
 from termcoder.config import Config, default_user_config_path
 from termcoder.instructions import load_agent_instruction_files
 from termcoder.models import PermissionCheck
-from termcoder.permissions import allow_all, ask_each
+from termcoder.permissions import allow_all, allow_readonly, ask_each
 from termcoder.providers.registry import build_provider
 from termcoder.skills import SkillCatalog, discover_skills
 from termcoder.skills.tool import ActivateSkill
@@ -80,6 +80,8 @@ def _permission_check(config: Config, prompt_user: PermissionCheck) -> Permissio
     match config.permission_mode:
         case "ask_each":
             return ask_each(prompt_user)
+        case "allow_readonly":
+            return allow_readonly(prompt_user)
         case "allow_all":
             return allow_all
     assert_never(config.permission_mode)

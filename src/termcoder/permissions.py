@@ -6,7 +6,12 @@ _READ_ONLY_TOOLS: frozenset[ToolName] = frozenset({"read", "search", "activate_s
 
 
 def ask_each(prompt_user: PermissionCheck) -> PermissionCheck:
-    """Prompt for tool calls unless the tool is explicitly read-only."""
+    """Prompt for every tool call."""
+    return prompt_user
+
+
+def allow_readonly(prompt_user: PermissionCheck) -> PermissionCheck:
+    """Allow read-only tool calls without prompting."""
 
     async def check(call: ToolCall) -> PermissionDecision:
         if call.name in _READ_ONLY_TOOLS:
