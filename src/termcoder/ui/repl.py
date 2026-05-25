@@ -24,6 +24,7 @@ from termcoder.events import (
 from termcoder.models import PermissionDecision, ToolCall
 from termcoder.skills import SkillCatalog, inject_inline_skills
 from termcoder.ui.choice import ChoiceReader
+from termcoder.ui.completion import PromptCompleter
 from termcoder.ui.formatting import permission_prompt
 from termcoder.ui.history import PromptHistory
 from termcoder.ui.interaction import ChoicePrompt, ChoicePromptState
@@ -80,12 +81,14 @@ class Repl:
     ) -> None:
         """Run until EOF."""
         self._render_banner(slash_commands.names())
+        completer = PromptCompleter(command_names=slash_commands.names(), skills=skills)
         while True:
             try:
                 self._history.reset_navigation()
                 user_input = await self._session.prompt_async(
                     "you > ",
                     key_bindings=self._prompt_key_bindings,
+                    completer=completer,
                 )
             except EOFError:
                 return
