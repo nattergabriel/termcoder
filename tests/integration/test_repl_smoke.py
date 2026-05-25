@@ -8,6 +8,7 @@ without a real terminal.
 
 import io
 from collections.abc import Sequence
+from pathlib import Path
 
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
@@ -17,6 +18,7 @@ from termcoder.agent.loop import Agent
 from termcoder.commands.registry import SlashCommand, SlashCommands
 from termcoder.events import TextDelta, ToolCallRequested
 from termcoder.models import ToolCall, ToolResult
+from termcoder.skills import Skill, SkillRegistry
 from termcoder.tools.registry import Registry
 from termcoder.ui.repl import Repl
 from tests.fakes.fake_provider import FakeProvider
@@ -154,3 +156,64 @@ async def test_repl_routes_slash_command_instead_of_calling_provider() -> None:
     assert received == [("hello", "there")]
     assert "noted" in buffer.getvalue()
     assert provider.received_calls == []
+
+
+async def test_repl_injects_inline_skill_activation_into_normal_prompt(tmp_path: Path) -> None:
+    skill = Skill(
+        name="python-testing",
+        description="Use when writing Python tests.",
+        location=tmp_path / "python-testing" / "SKILL.md",
+        body="Python testing body.",
+    )
+    skills = SkillRegistry((skill,))
+
+    with create_pipe_input() as pt_input:
+        pt_input.send_text("please use /python-testing for this\n\x04")
+
+        buffer = io.StringIO()
+        console = Console(file=buffer, force_terminal=False, width=80)
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+
+        provider = FakeProvider(scripts=[[TextDelta(text="ok")]])
+        agent = Agent(
+            provider=provider,
+            registry=Registry(),
+            check_permission=repl.confirm_tool,
+        )
+
+        await repl.run(agent, _NO_SLASH_COMMANDS, skills)
+
+    sent = provider.received_calls[0][0][-1].content
+    assert sent.startswith('<skill_content name="python-testing">')
+    assert "Python testing body." in sent
+    assert sent.endswith("please use /python-testing for this")
+
+
+async def test_repl_exact_skill_token_runs_turn_instead_of_unknown_command(tmp_path: Path) -> None:
+    skill = Skill(
+        name="python-testing",
+        description="Use when writing Python tests.",
+        location=tmp_path / "python-testing" / "SKILL.md",
+        body="Python testing body.",
+    )
+    skills = SkillRegistry((skill,))
+
+    with create_pipe_input() as pt_input:
+        pt_input.send_text("/python-testing\n\x04")
+
+        buffer = io.StringIO()
+        console = Console(file=buffer, force_terminal=False, width=80)
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+
+        provider = FakeProvider(scripts=[[TextDelta(text="ok")]])
+        agent = Agent(
+            provider=provider,
+            registry=Registry(),
+            check_permission=repl.confirm_tool,
+        )
+
+        await repl.run(agent, _NO_SLASH_COMMANDS, skills)
+
+    sent = provider.received_calls[0][0][-1].content
+    assert '<skill_content name="python-testing">' in sent
+    assert sent.endswith("Use the activated skill.")

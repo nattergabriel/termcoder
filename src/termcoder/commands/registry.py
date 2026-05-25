@@ -39,6 +39,10 @@ class SlashCommands:
         """Registered command names in display order."""
         return tuple(self.commands)
 
+    def has(self, name: str) -> bool:
+        """Return whether a slash command is registered."""
+        return name in self.commands
+
     async def dispatch(self, line: str) -> str:
         """Parse and dispatch a slash command."""
         stripped = line.strip()

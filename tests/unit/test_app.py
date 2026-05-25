@@ -14,6 +14,11 @@ async def _stub_prompt(_call: ToolCall) -> PermissionDecision:
     return "allow"
 
 
+@pytest.fixture(autouse=True)
+def _isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+
+
 def test_max_iterations_flows_from_config_to_agent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -41,6 +46,23 @@ def test_default_tools_are_registered(monkeypatch: pytest.MonkeyPatch) -> None:
         "search",
         "patch",
     }
+
+
+def test_activate_skill_tool_is_registered_when_skills_exist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+    skill_dir = tmp_path / ".termcoder" / "skills" / "python-testing"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: python-testing\ndescription: Use when writing Python tests.\n---\nBody\n",
+        encoding="utf-8",
+    )
+
+    ctx = build(Config(), _stub_prompt, cwd=tmp_path)
+
+    assert "activate_skill" in {schema.name for schema in ctx.agent.registry.schemas()}
+    assert ctx.skills.names() == ("python-testing",)
 
 
 async def test_allow_all_permission_mode_bypasses_prompt(monkeypatch: pytest.MonkeyPatch) -> None:

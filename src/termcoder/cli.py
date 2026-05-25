@@ -15,7 +15,7 @@ def main() -> None:
     repl = Repl()
     ctx = build(config, repl.confirm_tool, cwd=cwd)
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(repl.run(ctx.agent, ctx.slash_commands))
+        asyncio.run(repl.run(ctx.agent, ctx.slash_commands, ctx.skills))
 
 
 if __name__ == "__main__":

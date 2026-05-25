@@ -22,6 +22,7 @@ from termcoder.events import (
     TurnComplete,
 )
 from termcoder.models import PermissionDecision, ToolCall
+from termcoder.skills import SkillRegistry, inject_activated_skills
 from termcoder.ui.choice import ChoiceReader
 from termcoder.ui.formatting import permission_prompt
 from termcoder.ui.history import PromptHistory
@@ -71,8 +72,14 @@ class Repl:
             else:
                 self._close_live()
 
-    async def run(self, agent: Agent, slash_commands: SlashCommands) -> None:
+    async def run(
+        self,
+        agent: Agent,
+        slash_commands: SlashCommands,
+        skills: SkillRegistry | None = None,
+    ) -> None:
         """Run until EOF."""
+        skill_registry = skills or SkillRegistry()
         self._render_banner(slash_commands.names())
         while True:
             try:
@@ -90,12 +97,13 @@ class Repl:
                 continue
 
             self._history.append(user_input)
-            if user_input.lstrip().startswith("/"):
+            if _dispatch_as_slash_command(user_input, slash_commands, skill_registry):
                 await self._run_slash(slash_commands, user_input)
                 continue
 
             self._print_blank_line()
-            turn = asyncio.create_task(self._run_turn(agent, user_input))
+            turn_input = inject_activated_skills(user_input, skill_registry)
+            turn = asyncio.create_task(self._run_turn(agent, turn_input))
             try:
                 with self._cancel_on_sigint(turn):
                     await turn
@@ -198,3 +206,24 @@ class Repl:
         finally:
             with contextlib.suppress(NotImplementedError):
                 loop.remove_signal_handler(signal.SIGINT)
+
+
+def _dispatch_as_slash_command(
+    user_input: str,
+    slash_commands: SlashCommands,
+    skills: SkillRegistry,
+) -> bool:
+    stripped = user_input.lstrip()
+    if not stripped.startswith("/"):
+        return False
+    name = _leading_slash_name(stripped)
+    if name is not None and slash_commands.has(name):
+        return True
+    return name is None or skills.get(name) is None
+
+
+def _leading_slash_name(stripped: str) -> str | None:
+    parts = stripped[1:].split(maxsplit=1)
+    if not parts:
+        return None
+    return parts[0]

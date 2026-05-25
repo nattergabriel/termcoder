@@ -38,6 +38,24 @@ async def test_ask_each_allows_search_without_prompt() -> None:
     assert called is False
 
 
+async def test_ask_each_allows_activate_skill_without_prompt() -> None:
+    called = False
+
+    async def prompt(_call: ToolCall) -> PermissionDecision:
+        nonlocal called
+        called = True
+        return "deny"
+
+    check = ask_each(prompt)
+
+    decision = await check(
+        ToolCall(id="c1", name="activate_skill", arguments='{"name":"python-testing"}')
+    )
+
+    assert decision == "allow"
+    assert called is False
+
+
 async def test_ask_each_prompts_for_sensitive_tools() -> None:
     received: list[ToolCall] = []
 
