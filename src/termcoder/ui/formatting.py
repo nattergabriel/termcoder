@@ -15,7 +15,7 @@ def permission_prompt(call: ToolCall) -> ChoicePrompt[PermissionDecision]:
             ChoiceOption(label="Yes", value="allow", shortcut="y"),
             ChoiceOption(label="No", value="deny", shortcut="n"),
         ),
-        default_index=1,
+        default_index=0,
     )
 
 

@@ -228,7 +228,7 @@ async def test_permission_prompt_includes_tool_argument_preview() -> None:
 
     assert prompt.title == "Allow Bash(rm -rf build)?"
     assert [option.label for option in prompt.options] == ["Yes", "No"]
-    assert prompt.default_index == 1
+    assert prompt.default_index == 0
 
 
 async def test_permission_allow_does_not_start_tool_waiting_spinner() -> None:
@@ -257,14 +257,14 @@ async def test_permission_deny_does_not_start_tool_waiting_spinner() -> None:
 
 async def test_permission_prompt_supports_arrow_key_selection() -> None:
     with create_pipe_input() as pt_input:
-        pt_input.send_text("\x1b[A\n")
+        pt_input.send_text("\x1b[B\n")
         repl = Repl(input=pt_input, output=DummyOutput())
 
         decision = await repl.confirm_tool(
             ToolCall(id="t1", name="bash", arguments='{"command": "sleep 1"}')
         )
 
-        assert decision == "allow"
+        assert decision == "deny"
 
 
 async def test_tool_started_starts_waiting_spinner() -> None:
