@@ -22,6 +22,7 @@ from termcoder.events import (
     TurnComplete,
 )
 from termcoder.models import PermissionDecision, ToolCall
+from termcoder.skills import SkillCatalog, inject_inline_skills
 from termcoder.ui.choice import ChoiceReader
 from termcoder.ui.formatting import permission_prompt
 from termcoder.ui.history import PromptHistory
@@ -71,7 +72,12 @@ class Repl:
             else:
                 self._close_live()
 
-    async def run(self, agent: Agent, slash_commands: SlashCommands) -> None:
+    async def run(
+        self,
+        agent: Agent,
+        slash_commands: SlashCommands,
+        skills: SkillCatalog | None = None,
+    ) -> None:
         """Run until EOF."""
         self._render_banner(slash_commands.names())
         while True:
@@ -90,12 +96,18 @@ class Repl:
                 continue
 
             self._history.append(user_input)
-            if user_input.lstrip().startswith("/"):
+            if _is_registered_slash_command(user_input, slash_commands):
+                await self._run_slash(slash_commands, user_input)
+                continue
+            turn_input = (
+                inject_inline_skills(user_input, skills) if skills is not None else user_input
+            )
+            if _is_slash_line(user_input) and turn_input == user_input:
                 await self._run_slash(slash_commands, user_input)
                 continue
 
             self._print_blank_line()
-            turn = asyncio.create_task(self._run_turn(agent, user_input))
+            turn = asyncio.create_task(self._run_turn(agent, turn_input))
             try:
                 with self._cancel_on_sigint(turn):
                     await turn
@@ -198,3 +210,18 @@ class Repl:
         finally:
             with contextlib.suppress(NotImplementedError):
                 loop.remove_signal_handler(signal.SIGINT)
+
+
+def _is_registered_slash_command(line: str, slash_commands: SlashCommands) -> bool:
+    stripped = line.strip()
+    if not stripped.startswith("/"):
+        return False
+    parts = stripped[1:].split(maxsplit=1)
+    if not parts:
+        return False
+    name = parts[0]
+    return name in slash_commands.names()
+
+
+def _is_slash_line(line: str) -> bool:
+    return line.strip().startswith("/")

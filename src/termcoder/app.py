@@ -16,9 +16,12 @@ from termcoder.instructions import load_agent_instruction_files
 from termcoder.models import PermissionCheck
 from termcoder.permissions import allow_all, ask_each
 from termcoder.providers.registry import build_provider
+from termcoder.skills import SkillCatalog, discover_skills
+from termcoder.skills.tool import ActivateSkill
 from termcoder.tools.bash import Bash
 from termcoder.tools.edit import Edit
 from termcoder.tools.patch import Patch
+from termcoder.tools.protocol import Tool
 from termcoder.tools.read import Read
 from termcoder.tools.registry import Registry
 from termcoder.tools.search import Search
@@ -32,6 +35,7 @@ class AppContext:
     agent: Agent
     config: Config
     slash_commands: SlashCommands
+    skills: SkillCatalog
 
 
 def build(
@@ -41,7 +45,11 @@ def build(
     cwd: Path | None = None,
 ) -> AppContext:
     provider = build_provider(config)
-    registry = Registry([Read(), Write(), Edit(), Bash(), Search(), Patch()])
+    skills = discover_skills(cwd)
+    tools: list[Tool] = [Read(), Write(), Edit(), Bash(), Search(), Patch()]
+    if skills.skills:
+        tools.append(ActivateSkill(skills))
+    registry = Registry(tools)
     instruction_files = load_agent_instruction_files(cwd)
     agent = Agent(
         provider=provider,
@@ -65,7 +73,7 @@ def build(
             temperature_command(command_context),
         ]
     )
-    return AppContext(agent=agent, config=config, slash_commands=slash_commands)
+    return AppContext(agent=agent, config=config, slash_commands=slash_commands, skills=skills)
 
 
 def _permission_check(config: Config, prompt_user: PermissionCheck) -> PermissionCheck:

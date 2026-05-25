@@ -19,6 +19,7 @@ def test_max_iterations_flows_from_config_to_agent(
 ) -> None:
     # Skip the real SDK client construction — we only care that the value lands on Agent.
     monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
     user_path = tmp_path / "config.toml"
     user_path.write_text("max_iterations = 7\n", encoding="utf-8")
     config = load_config(cwd=tmp_path / "elsewhere", user_config_path=user_path)
@@ -28,10 +29,11 @@ def test_max_iterations_flows_from_config_to_agent(
     assert ctx.agent.max_iterations == 7
 
 
-def test_default_tools_are_registered(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_default_tools_are_registered(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
 
-    ctx = build(Config(), _stub_prompt)
+    ctx = build(Config(), _stub_prompt, cwd=tmp_path / "project")
 
     assert {schema.name for schema in ctx.agent.registry.schemas()} == {
         "read",
@@ -43,8 +45,29 @@ def test_default_tools_are_registered(monkeypatch: pytest.MonkeyPatch) -> None:
     }
 
 
-async def test_allow_all_permission_mode_bypasses_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_activate_skill_tool_is_registered_when_skills_exist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    skill = tmp_path / "project" / ".termcoder" / "skills" / "python-testing" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text(
+        "---\nname: python-testing\ndescription: Write Python tests.\n---\nUse pytest.\n",
+        encoding="utf-8",
+    )
+
+    ctx = build(Config(), _stub_prompt, cwd=tmp_path / "project")
+
+    assert "activate_skill" in {schema.name for schema in ctx.agent.registry.schemas()}
+    assert ctx.skills.names() == ("python-testing",)
+
+
+async def test_allow_all_permission_mode_bypasses_prompt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
     called = False
 
     async def prompt(_call: ToolCall) -> PermissionDecision:
@@ -59,8 +82,11 @@ async def test_allow_all_permission_mode_bypasses_prompt(monkeypatch: pytest.Mon
     assert called is False
 
 
-async def test_ask_each_permission_mode_skips_read_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_ask_each_permission_mode_skips_read_prompt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
     called = False
 
     async def prompt(_call: ToolCall) -> PermissionDecision:
@@ -79,6 +105,7 @@ def test_agents_md_instructions_flow_to_agent_system_prompt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("termcoder.app.build_provider", lambda _cfg: FakeProvider(scripts=[]))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
     nested = tmp_path / "pkg"
     nested.mkdir()
     (tmp_path / ".git").mkdir()

@@ -8,6 +8,7 @@ without a real terminal.
 
 import io
 from collections.abc import Sequence
+from pathlib import Path
 
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
@@ -17,6 +18,7 @@ from termcoder.agent.loop import Agent
 from termcoder.commands.registry import SlashCommand, SlashCommands
 from termcoder.events import TextDelta, ToolCallRequested
 from termcoder.models import ToolCall, ToolResult
+from termcoder.skills import Skill, SkillCatalog
 from termcoder.tools.registry import Registry
 from termcoder.ui.repl import Repl
 from tests.fakes.fake_provider import FakeProvider
@@ -153,4 +155,85 @@ async def test_repl_routes_slash_command_instead_of_calling_provider() -> None:
 
     assert received == [("hello", "there")]
     assert "noted" in buffer.getvalue()
+    assert provider.received_calls == []
+
+
+async def test_repl_injects_inline_skill_tokens_into_normal_turn(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "python-testing"
+    skill_dir.mkdir()
+    location = skill_dir / "SKILL.md"
+    location.write_text("", encoding="utf-8")
+    skills = SkillCatalog(
+        (
+            Skill(
+                name="python-testing",
+                description="Write Python tests.",
+                location=location,
+                body="# Python Testing\nUse pytest.",
+            ),
+        )
+    )
+
+    with create_pipe_input() as pt_input:
+        pt_input.send_text("please use /python-testing for this\n\x04")
+
+        buffer = io.StringIO()
+        console = Console(file=buffer, force_terminal=False, width=80)
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        provider = FakeProvider(scripts=[[TextDelta(text="ok")]])
+        agent = Agent(provider=provider, registry=Registry(), check_permission=repl.confirm_tool)
+
+        await repl.run(agent, _NO_SLASH_COMMANDS, skills)
+
+    user_message = provider.received_calls[0][0][-1]
+    assert user_message.content.startswith('<skill_content name="python-testing">')
+    assert "# Python Testing" in user_message.content
+    assert user_message.content.endswith("please use /python-testing for this")
+
+
+async def test_repl_exact_skill_token_runs_turn_with_minimal_prompt(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "python-testing"
+    skill_dir.mkdir()
+    location = skill_dir / "SKILL.md"
+    location.write_text("", encoding="utf-8")
+    skills = SkillCatalog(
+        (
+            Skill(
+                name="python-testing",
+                description="Write Python tests.",
+                location=location,
+                body="# Python Testing\nUse pytest.",
+            ),
+        )
+    )
+
+    with create_pipe_input() as pt_input:
+        pt_input.send_text("/python-testing\n\x04")
+
+        buffer = io.StringIO()
+        console = Console(file=buffer, force_terminal=False, width=80)
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        provider = FakeProvider(scripts=[[TextDelta(text="ok")]])
+        agent = Agent(provider=provider, registry=Registry(), check_permission=repl.confirm_tool)
+
+        await repl.run(agent, _NO_SLASH_COMMANDS, skills)
+
+    user_message = provider.received_calls[0][0][-1]
+    assert user_message.content.startswith('<skill_content name="python-testing">')
+    assert user_message.content.endswith("Use the activated skill.")
+
+
+async def test_repl_unknown_slash_line_still_reports_command_error() -> None:
+    with create_pipe_input() as pt_input:
+        pt_input.send_text("/unknown\n\x04")
+
+        buffer = io.StringIO()
+        console = Console(file=buffer, force_terminal=False, width=80)
+        repl = Repl(console=console, input=pt_input, output=DummyOutput())
+        provider = FakeProvider(scripts=[])
+        agent = Agent(provider=provider, registry=Registry(), check_permission=repl.confirm_tool)
+
+        await repl.run(agent, _NO_SLASH_COMMANDS)
+
+    assert "unknown command: /unknown" in buffer.getvalue()
     assert provider.received_calls == []
