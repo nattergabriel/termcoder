@@ -4,7 +4,6 @@ from termcoder.tools.delete import Delete
 from termcoder.tools.edit import Edit
 from termcoder.tools.list_files import ListFiles
 from termcoder.tools.move import Move
-from termcoder.tools.patch import Patch
 from termcoder.tools.read import Read
 from termcoder.tools.registry import Registry
 from termcoder.tools.search import Search
@@ -18,7 +17,6 @@ def test_init_indexes_tools_by_schema_name() -> None:
             Write(),
             Edit(),
             Search(),
-            Patch(),
             ListFiles(),
             Move(),
             Delete(),
@@ -29,7 +27,6 @@ def test_init_indexes_tools_by_schema_name() -> None:
     assert registry.get("write").__class__ is Write
     assert registry.get("edit").__class__ is Edit
     assert registry.get("search").__class__ is Search
-    assert registry.get("patch").__class__ is Patch
     assert registry.get("list_files").__class__ is ListFiles
     assert registry.get("move").__class__ is Move
     assert registry.get("delete").__class__ is Delete

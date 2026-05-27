@@ -23,7 +23,6 @@ from termcoder.tools.delete import Delete
 from termcoder.tools.edit import Edit
 from termcoder.tools.list_files import ListFiles
 from termcoder.tools.move import Move
-from termcoder.tools.patch import Patch
 from termcoder.tools.protocol import Tool
 from termcoder.tools.read import Read
 from termcoder.tools.registry import Registry
@@ -55,7 +54,6 @@ def build(
         Edit(),
         Bash(),
         Search(),
-        Patch(),
         ListFiles(),
         Move(),
         Delete(),
