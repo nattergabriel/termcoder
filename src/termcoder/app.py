@@ -19,7 +19,10 @@ from termcoder.providers.registry import build_provider
 from termcoder.skills import SkillCatalog, discover_skills
 from termcoder.skills.tool import ActivateSkill
 from termcoder.tools.bash import Bash
+from termcoder.tools.delete import Delete
 from termcoder.tools.edit import Edit
+from termcoder.tools.list_files import ListFiles
+from termcoder.tools.move import Move
 from termcoder.tools.patch import Patch
 from termcoder.tools.protocol import Tool
 from termcoder.tools.read import Read
@@ -46,7 +49,17 @@ def build(
 ) -> AppContext:
     provider = build_provider(config)
     skills = discover_skills(cwd)
-    tools: list[Tool] = [Read(), Write(), Edit(), Bash(), Search(), Patch()]
+    tools: list[Tool] = [
+        Read(),
+        Write(),
+        Edit(),
+        Bash(),
+        Search(),
+        Patch(),
+        ListFiles(),
+        Move(),
+        Delete(),
+    ]
     if skills.skills:
         tools.append(ActivateSkill(skills))
     registry = Registry(tools)

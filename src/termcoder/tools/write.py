@@ -10,7 +10,10 @@ from termcoder.tools.results import invalid_arguments, tool_failed
 class Write:
     schema: ToolSchema = ToolSchema(
         name="write",
-        description="Write UTF-8 text content to a file, overwriting any existing content.",
+        description=(
+            "Write UTF-8 text content to a file, creating parent directories as needed and "
+            "overwriting any existing content."
+        ),
         parameters={
             "type": "object",
             "properties": {
@@ -35,7 +38,9 @@ class Write:
         except ArgumentError as exc:
             return invalid_arguments(call, exc)
         try:
-            Path(path).write_text(content, encoding="utf-8")
+            target = Path(path)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
         except (OSError, TypeError) as exc:
             return tool_failed(call, "write", exc)
         return ToolResult(

@@ -42,6 +42,9 @@ def test_default_tools_are_registered(tmp_path: Path, monkeypatch: pytest.Monkey
         "bash",
         "search",
         "patch",
+        "list_files",
+        "move",
+        "delete",
     }
 
 

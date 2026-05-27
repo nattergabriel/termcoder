@@ -70,6 +70,23 @@ async def test_allow_readonly_allows_search_without_prompt() -> None:
     assert called is False
 
 
+async def test_allow_readonly_allows_discovery_tools_without_prompt() -> None:
+    called = False
+
+    async def prompt(_call: ToolCall) -> PermissionDecision:
+        nonlocal called
+        called = True
+        return "deny"
+
+    check = allow_readonly(prompt)
+
+    for name in ("list_files",):
+        decision = await check(ToolCall(id="c1", name=name, arguments="{}"))
+
+        assert decision == "allow"
+    assert called is False
+
+
 async def test_allow_readonly_prompts_for_sensitive_tools() -> None:
     received: list[ToolCall] = []
 
@@ -84,6 +101,22 @@ async def test_allow_readonly_prompts_for_sensitive_tools() -> None:
 
     assert decision == "deny"
     assert received == [call]
+
+
+async def test_allow_readonly_prompts_for_filesystem_mutation_tools() -> None:
+    received: list[ToolCall] = []
+
+    async def prompt(call: ToolCall) -> PermissionDecision:
+        received.append(call)
+        return "deny"
+
+    check = allow_readonly(prompt)
+
+    for name in ("move", "delete"):
+        decision = await check(ToolCall(id="c1", name=name, arguments="{}"))
+
+        assert decision == "deny"
+    assert [call.name for call in received] == ["move", "delete"]
 
 
 async def test_ask_each_prompts_for_sensitive_tools() -> None:

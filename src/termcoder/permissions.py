@@ -3,7 +3,7 @@
 from termcoder.models import PermissionCheck, PermissionDecision, ToolCall, ToolName
 
 _ALWAYS_ALLOWED_TOOLS: frozenset[ToolName] = frozenset({"activate_skill"})
-_READ_ONLY_TOOLS: frozenset[ToolName] = frozenset({"read", "search"})
+_READ_ONLY_TOOLS: frozenset[ToolName] = frozenset({"read", "search", "list_files"})
 
 
 def ask_each(prompt_user: PermissionCheck) -> PermissionCheck:
