@@ -77,9 +77,9 @@ class Bash:
 
         output = stdout.decode("utf-8", errors="replace") + stderr.decode("utf-8", errors="replace")
         exit_line = f"[exit {proc.returncode}]"
+        if len(output) > max_chars:
+            output = f"{output[:max_chars]}\n[truncated to {max_chars} characters]"
         content = f"{output}\n{exit_line}" if output else exit_line
-        if len(content) > max_chars:
-            content = f"{content[:max_chars]}\n[truncated to {max_chars} characters]"
         return ToolResult(
             tool_call_id=call.id,
             content=content,

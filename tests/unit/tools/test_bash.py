@@ -87,6 +87,7 @@ async def test_truncates_large_output() -> None:
 
     assert result.is_error is False
     assert "[truncated to 3 characters]" in result.content
+    assert "[exit 0]" in result.content
 
 
 def _call(command: str) -> ToolCall:
