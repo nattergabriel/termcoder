@@ -3,6 +3,11 @@
 from termcoder.models import ToolCall, ToolResult
 
 
+def tool_ok(call: ToolCall, content: str) -> ToolResult:
+    """Return a successful tool result."""
+    return ToolResult(tool_call_id=call.id, content=content)
+
+
 def invalid_arguments(call: ToolCall, exc: Exception) -> ToolResult:
     """Return a standard invalid-arguments tool error."""
     return tool_error(call, f"invalid arguments: {exc}")

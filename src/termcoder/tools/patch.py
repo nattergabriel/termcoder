@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from termcoder.models import ToolCall, ToolResult, ToolSchema
-from termcoder.tools.arguments import ArgumentError, optional_string, parse_object, required_string
-from termcoder.tools.results import invalid_arguments, tool_failed
+from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.results import invalid_arguments, tool_failed, tool_ok
 
 _HUNK_HEADER_RE = re.compile(
     r"^@@ -(?P<old_start>\d+)(?:,(?P<old_count>\d+))? "
@@ -60,9 +60,9 @@ class Patch:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = parse_object(call)
-            patch_text = required_string(args, "patch")
-            root = Path(optional_string(args, "root") or ".")
+            args = ToolArgs.from_call(call)
+            patch_text = args.required_string("patch")
+            root = args.path("root")
             file_patches = _parse_patch(patch_text)
         except ArgumentError as exc:
             return invalid_arguments(call, exc)
@@ -73,9 +73,9 @@ class Patch:
         except (OSError, UnicodeDecodeError, ValueError) as exc:
             return tool_failed(call, "patch", exc)
 
-        return ToolResult(
-            tool_call_id=call.id,
-            content=(
+        return tool_ok(
+            call,
+            (
                 f"applied patch to {len(updates)} file(s): "
                 f"{', '.join(str(update.path) for update in updates)}"
             ),

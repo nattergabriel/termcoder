@@ -1,27 +1,13 @@
 """List files tool."""
 
+from collections import deque
 from pathlib import Path
 
 from termcoder.models import ToolCall, ToolResult, ToolSchema
-from termcoder.tools.arguments import (
-    ArgumentError,
-    optional_int,
-    optional_string,
-    parse_object,
-)
-from termcoder.tools.results import invalid_arguments, tool_failed
+from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.filesystem import display_path, is_ignored_dir, sorted_children
+from termcoder.tools.results import invalid_arguments, tool_failed, tool_ok
 
-_IGNORED_DIR_NAMES = {
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".tox",
-    ".venv",
-    "__pycache__",
-    "dist",
-    "node_modules",
-}
 _DEFAULT_MAX_DEPTH = 2
 _DEFAULT_LIMIT = 200
 
@@ -57,16 +43,10 @@ class ListFiles:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = parse_object(call)
-            path = Path(optional_string(args, "path") or ".")
-            max_depth = optional_int(args, "max_depth")
-            limit = optional_int(args, "limit")
-            max_depth = _DEFAULT_MAX_DEPTH if max_depth is None else max_depth
-            limit = _DEFAULT_LIMIT if limit is None else limit
-            if max_depth < 0:
-                raise ArgumentError("'max_depth' must be at least 0")
-            if limit < 1:
-                raise ArgumentError("'limit' must be at least 1")
+            args = ToolArgs.from_call(call)
+            path = args.path("path")
+            max_depth = args.int("max_depth", default=_DEFAULT_MAX_DEPTH, minimum=0)
+            limit = args.int("limit", default=_DEFAULT_LIMIT, minimum=1)
         except ArgumentError as exc:
             return invalid_arguments(call, exc)
 
@@ -76,53 +56,25 @@ class ListFiles:
             return tool_failed(call, "list_files", exc)
 
         if not entries:
-            return ToolResult(tool_call_id=call.id, content=f"no entries under {path}")
+            return tool_ok(call, f"no entries under {path}")
         summary = f"listed {len(entries)} entr{'y' if len(entries) == 1 else 'ies'}"
         if len(entries) >= limit:
             summary += f"; showing first {limit}"
-        return ToolResult(tool_call_id=call.id, content="\n".join([*entries, summary]))
+        return tool_ok(call, "\n".join([*entries, summary]))
 
 
 def _list_entries(path: Path, *, max_depth: int, limit: int) -> list[str]:
     if path.is_file() or path.is_symlink():
         return [str(path)]
+
     entries: list[str] = []
-    _collect_entries(path, root=path, depth=0, max_depth=max_depth, limit=limit, entries=entries)
-    return entries
-
-
-def _collect_entries(
-    path: Path,
-    *,
-    root: Path,
-    depth: int,
-    max_depth: int,
-    limit: int,
-    entries: list[str],
-) -> None:
-    if len(entries) >= limit:
-        return
-    children = sorted(path.iterdir(), key=lambda child: (not child.is_dir(), child.name.lower()))
-    for child in children:
-        if len(entries) >= limit:
-            return
+    queue: deque[tuple[Path, int]] = deque((child, 0) for child in sorted_children(path))
+    while queue and len(entries) < limit:
+        child, depth = queue.popleft()
         is_dir = child.is_dir() and not child.is_symlink()
-        if is_dir and child.name in _IGNORED_DIR_NAMES:
+        if is_dir and is_ignored_dir(child):
             continue
-        entries.append(_display_path(child, root=root, is_dir=is_dir))
+        entries.append(display_path(child, path, is_dir=is_dir))
         if is_dir and depth < max_depth:
-            _collect_entries(
-                child,
-                root=root,
-                depth=depth + 1,
-                max_depth=max_depth,
-                limit=limit,
-                entries=entries,
-            )
-
-
-def _display_path(path: Path, *, root: Path, is_dir: bool) -> str:
-    display = str(path.relative_to(root))
-    if is_dir:
-        return f"{display}/"
-    return display
+            queue.extend((grandchild, depth + 1) for grandchild in sorted_children(child))
+    return entries

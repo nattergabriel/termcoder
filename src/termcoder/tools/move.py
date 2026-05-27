@@ -1,15 +1,8 @@
 """Move tool."""
 
-from pathlib import Path
-
 from termcoder.models import ToolCall, ToolResult, ToolSchema
-from termcoder.tools.arguments import (
-    ArgumentError,
-    optional_bool,
-    parse_object,
-    required_string,
-)
-from termcoder.tools.results import invalid_arguments, tool_error, tool_failed
+from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.results import invalid_arguments, tool_error, tool_failed, tool_ok
 
 
 class Move:
@@ -38,10 +31,10 @@ class Move:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = parse_object(call)
-            source = Path(required_string(args, "source"))
-            destination = Path(required_string(args, "destination"))
-            overwrite = optional_bool(args, "overwrite", default=False)
+            args = ToolArgs.from_call(call)
+            source = args.required_path("source")
+            destination = args.required_path("destination")
+            overwrite = args.bool("overwrite", default=False)
         except ArgumentError as exc:
             return invalid_arguments(call, exc)
 
@@ -51,4 +44,4 @@ class Move:
             source.replace(destination)
         except OSError as exc:
             return tool_failed(call, "move", exc)
-        return ToolResult(tool_call_id=call.id, content=f"moved {source} to {destination}")
+        return tool_ok(call, f"moved {source} to {destination}")

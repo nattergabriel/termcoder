@@ -1,10 +1,8 @@
 """Edit tool."""
 
-from pathlib import Path
-
 from termcoder.models import ToolCall, ToolResult, ToolSchema
-from termcoder.tools.arguments import ArgumentError, optional_bool, parse_object, required_string
-from termcoder.tools.results import invalid_arguments, tool_error, tool_failed
+from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.results import invalid_arguments, tool_error, tool_failed, tool_ok
 
 
 class Edit:
@@ -40,20 +38,19 @@ class Edit:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = parse_object(call)
-            path = required_string(args, "path")
-            old = required_string(args, "old")
-            new = required_string(args, "new")
-            replace_all = optional_bool(args, "replace_all", default=False)
+            args = ToolArgs.from_call(call)
+            path = args.required_path("path")
+            old = args.required_string("old")
+            new = args.required_string("new")
+            replace_all = args.bool("replace_all", default=False)
             if old == "":
                 raise ArgumentError("'old' must not be empty")
         except ArgumentError as exc:
             return invalid_arguments(call, exc)
 
-        target = Path(path)
         try:
-            content = target.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError, TypeError) as exc:
+            content = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
             return tool_failed(call, "edit", exc)
 
         count = content.count(old)
@@ -71,10 +68,7 @@ class Edit:
         replacements = count if replace_all else 1
         updated = content.replace(old, new, replacements)
         try:
-            target.write_text(updated, encoding="utf-8")
-        except (OSError, TypeError) as exc:
+            path.write_text(updated, encoding="utf-8")
+        except OSError as exc:
             return tool_failed(call, "edit", exc)
-        return ToolResult(
-            tool_call_id=call.id,
-            content=f"replaced {replacements} occurrence(s) in {path}",
-        )
+        return tool_ok(call, f"replaced {replacements} occurrence(s) in {path}")

@@ -4,6 +4,7 @@ defeat the point of the tool.
 
 import asyncio
 import json
+from pathlib import Path
 
 from termcoder.models import ToolCall
 from termcoder.tools.bash import Bash
@@ -65,6 +66,27 @@ async def test_rejects_non_string_command() -> None:
 
     assert result.is_error is True
     assert "command" in result.content
+
+
+async def test_runs_command_in_requested_cwd(tmp_path: Path) -> None:
+    result = await Bash().run(_call_args({"command": "pwd", "cwd": str(tmp_path)}))
+
+    assert result.is_error is False
+    assert str(tmp_path) in result.content
+
+
+async def test_times_out_long_running_command() -> None:
+    result = await Bash().run(_call_args({"command": "sleep 2", "timeout_seconds": 1}))
+
+    assert result.is_error is True
+    assert "timed out" in result.content
+
+
+async def test_truncates_large_output() -> None:
+    result = await Bash().run(_call_args({"command": "printf abcdef", "max_chars": 3}))
+
+    assert result.is_error is False
+    assert "[truncated to 3 characters]" in result.content
 
 
 def _call(command: str) -> ToolCall:
