@@ -23,7 +23,7 @@ The goal is not to out-feature mature tools like Claude Code, Codex, or OpenCode
 
 - Ask for code changes or codebase explanations from a terminal chat.
 - Watch streamed responses and live tool-call status while the agent works.
-- Let the agent read files, search by text or regex, create files, edit exact matches, apply unified diffs, and run project commands.
+- Let the agent read, list, search, create, edit, move, and delete files, and run project commands.
 - Choose the approval style that fits the task: confirm every action, auto-allow read-only inspection, or run fully trusted.
 - Use OpenAI, Anthropic, or an OpenAI-compatible endpoint such as OpenRouter or a local server.
 - Give the agent project-specific guidance with `AGENTS.md` files inherited from parent directories.

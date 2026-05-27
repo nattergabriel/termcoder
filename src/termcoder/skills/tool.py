@@ -2,12 +2,15 @@
 
 from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.skills.catalog import SkillCatalog
-from termcoder.tools.arguments import ArgumentError, parse_object, required_string
-from termcoder.tools.results import invalid_arguments, tool_error
+from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.protocol import ToolPermission
+from termcoder.tools.results import invalid_arguments, tool_error, tool_ok
 
 
 class ActivateSkill:
     """Return body-only instructions for a discovered skill."""
+
+    permission: ToolPermission = "always"
 
     def __init__(self, catalog: SkillCatalog) -> None:
         self._catalog = catalog
@@ -33,11 +36,11 @@ class ActivateSkill:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = parse_object(call)
-            name = required_string(args, "name")
+            args = ToolArgs.from_call(call)
+            name = args.required_string("name")
         except ArgumentError as exc:
             return invalid_arguments(call, exc)
         content = self._catalog.activation_content(name)
         if content is None:
             return tool_error(call, f"unknown skill: {name}")
-        return ToolResult(tool_call_id=call.id, content=content)
+        return tool_ok(call, content)

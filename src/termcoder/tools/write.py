@@ -1,16 +1,20 @@
 """Write tool."""
 
-from pathlib import Path
-
 from termcoder.models import ToolCall, ToolResult, ToolSchema
-from termcoder.tools.arguments import ArgumentError, parse_object, required_string
-from termcoder.tools.results import invalid_arguments, tool_failed
+from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.filesystem import required_path_arg
+from termcoder.tools.protocol import ToolPermission
+from termcoder.tools.results import invalid_arguments, tool_failed, tool_ok
 
 
 class Write:
+    permission: ToolPermission = "write"
     schema: ToolSchema = ToolSchema(
         name="write",
-        description="Write UTF-8 text content to a file, overwriting any existing content.",
+        description=(
+            "Write UTF-8 text content to a file, creating parent directories as needed and "
+            "overwriting any existing content."
+        ),
         parameters={
             "type": "object",
             "properties": {
@@ -29,16 +33,14 @@ class Write:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = parse_object(call)
-            path = required_string(args, "path")
-            content = required_string(args, "content")
+            args = ToolArgs.from_call(call)
+            path = required_path_arg(args, "path")
+            content = args.required_string("content")
         except ArgumentError as exc:
             return invalid_arguments(call, exc)
         try:
-            Path(path).write_text(content, encoding="utf-8")
-        except (OSError, TypeError) as exc:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        except OSError as exc:
             return tool_failed(call, "write", exc)
-        return ToolResult(
-            tool_call_id=call.id,
-            content=f"wrote {len(content)} characters to {path}",
-        )
+        return tool_ok(call, f"wrote {len(content)} characters to {path}")

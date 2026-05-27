@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Sequence
 
 from termcoder.models import ToolName, ToolSchema
-from termcoder.tools.protocol import Tool
+from termcoder.tools.protocol import Tool, ToolPermission
 
 
 class Registry:
@@ -19,3 +19,8 @@ class Registry:
 
     def schemas(self) -> Sequence[ToolSchema]:
         return tuple(tool.schema for tool in self._tools.values())
+
+    def names_with_permission(self, permission: ToolPermission) -> frozenset[ToolName]:
+        return frozenset(
+            tool.schema.name for tool in self._tools.values() if tool.permission == permission
+        )

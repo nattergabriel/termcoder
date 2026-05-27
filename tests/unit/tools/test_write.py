@@ -26,13 +26,13 @@ async def test_overwrites_existing_file(tmp_path: Path) -> None:
     assert target.read_text(encoding="utf-8") == "new"
 
 
-async def test_reports_missing_parent_dir_as_tool_error(tmp_path: Path) -> None:
+async def test_creates_missing_parent_directories(tmp_path: Path) -> None:
     target = tmp_path / "missing-dir" / "file.txt"
 
     result = await Write().run(_call({"path": str(target), "content": "x"}))
 
-    assert result.is_error is True
-    assert "write failed" in result.content
+    assert result.is_error is False
+    assert target.read_text(encoding="utf-8") == "x"
 
 
 async def test_rejects_malformed_json_arguments() -> None:

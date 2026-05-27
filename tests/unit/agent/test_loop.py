@@ -23,6 +23,7 @@ from termcoder.events import (
     TurnComplete,
 )
 from termcoder.models import Message, PermissionDecision, ToolCall, ToolResult, ToolSchema
+from termcoder.tools.protocol import ToolPermission
 from termcoder.tools.registry import Registry
 from tests.fakes.fake_permission import FakePermission
 from tests.fakes.fake_provider import FakeProvider
@@ -219,6 +220,7 @@ async def test_loop_blocks_on_permission_callable_before_dispatching_tool() -> N
 
     class GatedTool:
         schema = FakeTool(name="slow").schema
+        permission: ToolPermission = "write"
 
         async def run(self, call: ToolCall) -> ToolResult:
             tool_ran.set()

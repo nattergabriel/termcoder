@@ -9,6 +9,7 @@ valid object schema; tests can override when they care.
 from dataclasses import InitVar, dataclass, field
 
 from termcoder.models import ToolCall, ToolName, ToolResult, ToolSchema
+from termcoder.tools.protocol import ToolPermission
 
 
 @dataclass
@@ -18,6 +19,7 @@ class FakeTool:
     name: InitVar[ToolName] = "fake"
     scripted_results: list[ToolResult] = field(default_factory=list)
     received: list[ToolCall] = field(default_factory=list)
+    permission: ToolPermission = "write"
     schema: ToolSchema = field(init=False)
 
     def __post_init__(self, name: ToolName) -> None:

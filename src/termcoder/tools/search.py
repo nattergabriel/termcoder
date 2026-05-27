@@ -1,36 +1,21 @@
 """Search tool."""
 
-import os
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from pathlib import Path
 
 from termcoder.models import ToolCall, ToolResult, ToolSchema
-from termcoder.tools.arguments import (
-    ArgumentError,
-    optional_bool,
-    optional_int,
-    parse_object,
-    required_string,
-)
-from termcoder.tools.results import invalid_arguments, tool_error
+from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.filesystem import display_path, iter_files, required_path_arg
+from termcoder.tools.protocol import ToolPermission
+from termcoder.tools.results import invalid_arguments, tool_error, tool_ok
 
-_IGNORED_DIR_NAMES = {
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".tox",
-    ".venv",
-    "__pycache__",
-    "dist",
-    "node_modules",
-}
 _DEFAULT_LIMIT = 50
 _MAX_LINE_LENGTH = 240
 
 
 class Search:
+    permission: ToolPermission = "readonly"
     schema: ToolSchema = ToolSchema(
         name="search",
         description=(
@@ -69,17 +54,14 @@ class Search:
 
     async def run(self, call: ToolCall) -> ToolResult:
         try:
-            args = parse_object(call)
-            path = Path(required_string(args, "path"))
-            query = required_string(args, "query")
-            regex = optional_bool(args, "regex", default=False)
-            case_sensitive = optional_bool(args, "case_sensitive", default=True)
-            requested_limit = optional_int(args, "limit")
-            limit = _DEFAULT_LIMIT if requested_limit is None else requested_limit
+            args = ToolArgs.from_call(call)
+            path = required_path_arg(args, "path")
+            query = args.required_string("query")
+            regex = args.bool("regex", default=False)
+            case_sensitive = args.bool("case_sensitive", default=True)
+            limit = args.int("limit", default=_DEFAULT_LIMIT, minimum=1)
             if query == "":
                 raise ArgumentError("'query' must not be empty")
-            if limit < 1:
-                raise ArgumentError("'limit' must be at least 1")
             matcher = _line_matcher(query, regex=regex, case_sensitive=case_sensitive)
         except ArgumentError as exc:
             return invalid_arguments(call, exc)
@@ -90,7 +72,7 @@ class Search:
         matches: list[str] = []
         files_searched = 0
         files_skipped = 0
-        for file_path in _iter_files(path):
+        for file_path in iter_files(path):
             try:
                 file_matches = _search_file(
                     file_path,
@@ -106,10 +88,7 @@ class Search:
             if len(matches) >= limit:
                 break
 
-        return ToolResult(
-            tool_call_id=call.id,
-            content=_format_results(matches, files_searched, files_skipped, limit),
-        )
+        return tool_ok(call, _format_results(matches, files_searched, files_skipped, limit))
 
 
 def _line_matcher(query: str, *, regex: bool, case_sensitive: bool) -> Callable[[str], bool]:
@@ -136,36 +115,15 @@ def _search_file(
     remaining: int,
 ) -> list[str]:
     matches: list[str] = []
-    display_path = _display_path(file_path, root)
+    shown_path = display_path(file_path, root)
     with file_path.open(encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
             line = line.rstrip("\r\n")
             if matcher(line):
-                matches.append(f"{display_path}:{line_number}: {_truncate(line)}")
+                matches.append(f"{shown_path}:{line_number}: {_truncate(line)}")
                 if len(matches) >= remaining:
                     break
     return matches
-
-
-def _iter_files(path: Path) -> Iterator[Path]:
-    if path.is_file():
-        yield path
-        return
-    for root, dirnames, filenames in os.walk(path):
-        dirnames[:] = sorted(name for name in dirnames if name not in _IGNORED_DIR_NAMES)
-        for filename in sorted(filenames):
-            candidate = Path(root) / filename
-            if candidate.is_file():
-                yield candidate
-
-
-def _display_path(file_path: Path, root: Path) -> str:
-    if root.is_file():
-        return str(file_path)
-    try:
-        return str(file_path.relative_to(root))
-    except ValueError:
-        return str(file_path)
 
 
 def _truncate(line: str) -> str:
