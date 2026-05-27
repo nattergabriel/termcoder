@@ -59,5 +59,12 @@ async def test_rejects_invalid_limit() -> None:
     assert "limit" in result.content
 
 
+async def test_rejects_empty_path() -> None:
+    result = await ListFiles().run(_call({"path": ""}))
+
+    assert result.is_error is True
+    assert "path" in result.content
+
+
 def _call(args: dict[str, object]) -> ToolCall:
     return ToolCall(id="c1", name="list_files", arguments=json.dumps(args))

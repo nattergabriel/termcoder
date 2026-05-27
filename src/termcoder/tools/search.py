@@ -6,7 +6,8 @@ from pathlib import Path
 
 from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, ToolArgs
-from termcoder.tools.filesystem import display_path, iter_files
+from termcoder.tools.filesystem import display_path, iter_files, required_path_arg
+from termcoder.tools.protocol import ToolPermission
 from termcoder.tools.results import invalid_arguments, tool_error, tool_ok
 
 _DEFAULT_LIMIT = 50
@@ -14,6 +15,7 @@ _MAX_LINE_LENGTH = 240
 
 
 class Search:
+    permission: ToolPermission = "readonly"
     schema: ToolSchema = ToolSchema(
         name="search",
         description=(
@@ -53,7 +55,7 @@ class Search:
     async def run(self, call: ToolCall) -> ToolResult:
         try:
             args = ToolArgs.from_call(call)
-            path = args.required_path("path")
+            path = required_path_arg(args, "path")
             query = args.required_string("query")
             regex = args.bool("regex", default=False)
             case_sensitive = args.bool("case_sensitive", default=True)

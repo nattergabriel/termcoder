@@ -4,6 +4,7 @@ import asyncio
 
 from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.protocol import ToolPermission
 from termcoder.tools.results import invalid_arguments, tool_error, tool_failed
 
 _DEFAULT_TIMEOUT_SECONDS = 30
@@ -11,6 +12,7 @@ _DEFAULT_MAX_CHARS = 20_000
 
 
 class Bash:
+    permission: ToolPermission = "execute"
     schema: ToolSchema = ToolSchema(
         name="bash",
         description=(

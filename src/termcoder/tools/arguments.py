@@ -3,7 +3,6 @@
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
-from pathlib import Path
 
 from termcoder.models import ToolCall
 
@@ -44,15 +43,6 @@ class ToolArgs:
         if not isinstance(value, str):
             raise ArgumentError(f"{key!r} must be a string")
         return value
-
-    def string(self, key: str, *, default: str) -> str:
-        return self.optional_string(key) or default
-
-    def required_path(self, key: str) -> Path:
-        return Path(self.required_string(key))
-
-    def path(self, key: str, *, default: str = ".") -> Path:
-        return Path(self.string(key, default=default))
 
     def optional_int(self, key: str, *, minimum: int | None = None) -> int | None:
         if key not in self.values:

@@ -1,7 +1,6 @@
 """Tests for shared tool argument parsing helpers."""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -51,18 +50,6 @@ def test_optional_string_returns_none_when_missing() -> None:
 
 def test_optional_string_returns_string_value() -> None:
     assert ToolArgs({"root": "."}).optional_string("root") == "."
-
-
-def test_string_returns_default_when_missing() -> None:
-    assert ToolArgs({}).string("root", default=".") == "."
-
-
-def test_path_returns_path_default_when_missing() -> None:
-    assert ToolArgs({}).path("root") == Path(".")
-
-
-def test_required_path_returns_path_value() -> None:
-    assert ToolArgs({"path": "example.txt"}).required_path("path") == Path("example.txt")
 
 
 def test_optional_int_returns_none_when_missing() -> None:

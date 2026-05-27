@@ -2,10 +2,13 @@
 
 from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.filesystem import required_path_arg
+from termcoder.tools.protocol import ToolPermission
 from termcoder.tools.results import invalid_arguments, tool_error, tool_failed, tool_ok
 
 
 class Edit:
+    permission: ToolPermission = "write"
     schema: ToolSchema = ToolSchema(
         name="edit",
         description=(
@@ -39,7 +42,7 @@ class Edit:
     async def run(self, call: ToolCall) -> ToolResult:
         try:
             args = ToolArgs.from_call(call)
-            path = args.required_path("path")
+            path = required_path_arg(args, "path")
             old = args.required_string("old")
             new = args.required_string("new")
             replace_all = args.bool("replace_all", default=False)

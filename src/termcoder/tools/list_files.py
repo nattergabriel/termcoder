@@ -5,7 +5,8 @@ from pathlib import Path
 
 from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.tools.arguments import ArgumentError, ToolArgs
-from termcoder.tools.filesystem import display_path, is_ignored_dir, sorted_children
+from termcoder.tools.filesystem import display_path, is_ignored_dir, path_arg, sorted_children
+from termcoder.tools.protocol import ToolPermission
 from termcoder.tools.results import invalid_arguments, tool_failed, tool_ok
 
 _DEFAULT_MAX_DEPTH = 2
@@ -13,6 +14,7 @@ _DEFAULT_LIMIT = 200
 
 
 class ListFiles:
+    permission: ToolPermission = "readonly"
     schema: ToolSchema = ToolSchema(
         name="list_files",
         description=(
@@ -44,7 +46,7 @@ class ListFiles:
     async def run(self, call: ToolCall) -> ToolResult:
         try:
             args = ToolArgs.from_call(call)
-            path = args.path("path")
+            path = path_arg(args, "path")
             max_depth = args.int("max_depth", default=_DEFAULT_MAX_DEPTH, minimum=0)
             limit = args.int("limit", default=_DEFAULT_LIMIT, minimum=1)
         except ArgumentError as exc:

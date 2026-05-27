@@ -18,16 +18,8 @@ from termcoder.permissions import allow_all, allow_readonly, ask_each
 from termcoder.providers.registry import build_provider
 from termcoder.skills import SkillCatalog, discover_skills
 from termcoder.skills.tool import ActivateSkill
-from termcoder.tools.bash import Bash
-from termcoder.tools.delete import Delete
-from termcoder.tools.edit import Edit
-from termcoder.tools.list_files import ListFiles
-from termcoder.tools.move import Move
-from termcoder.tools.protocol import Tool
-from termcoder.tools.read import Read
+from termcoder.tools.builtins import builtin_tools
 from termcoder.tools.registry import Registry
-from termcoder.tools.search import Search
-from termcoder.tools.write import Write
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,16 +40,7 @@ def build(
 ) -> AppContext:
     provider = build_provider(config)
     skills = discover_skills(cwd)
-    tools: list[Tool] = [
-        Read(),
-        Write(),
-        Edit(),
-        Bash(),
-        Search(),
-        ListFiles(),
-        Move(),
-        Delete(),
-    ]
+    tools = list(builtin_tools())
     if skills.skills:
         tools.append(ActivateSkill(skills))
     registry = Registry(tools)
@@ -65,7 +48,7 @@ def build(
     agent = Agent(
         provider=provider,
         registry=registry,
-        check_permission=_permission_check(config, prompt_user),
+        check_permission=_permission_check(config, prompt_user, registry),
         system_prompt=assemble_system_prompt(
             config.system_prompt,
             instruction_files=instruction_files,
@@ -87,12 +70,22 @@ def build(
     return AppContext(agent=agent, config=config, slash_commands=slash_commands, skills=skills)
 
 
-def _permission_check(config: Config, prompt_user: PermissionCheck) -> PermissionCheck:
+def _permission_check(
+    config: Config,
+    prompt_user: PermissionCheck,
+    registry: Registry,
+) -> PermissionCheck:
+    always_allowed_tools = registry.names_with_permission("always")
+    readonly_tools = registry.names_with_permission("readonly")
     match config.permission_mode:
         case "ask_each":
-            return ask_each(prompt_user)
+            return ask_each(prompt_user, always_allowed_tools=always_allowed_tools)
         case "allow_readonly":
-            return allow_readonly(prompt_user)
+            return allow_readonly(
+                prompt_user,
+                always_allowed_tools=always_allowed_tools,
+                readonly_tools=readonly_tools,
+            )
         case "allow_all":
             return allow_all
     assert_never(config.permission_mode)

@@ -45,5 +45,13 @@ def test_schemas_returns_each_tools_schema() -> None:
     assert list(registry.schemas()) == [read.schema, write.schema]
 
 
+def test_names_with_permission_returns_matching_tool_names() -> None:
+    registry = Registry([Read(), Search(), Write(), Delete()])
+
+    assert registry.names_with_permission("readonly") == frozenset({"read", "search"})
+    assert registry.names_with_permission("write") == frozenset({"write", "delete"})
+    assert registry.names_with_permission("execute") == frozenset()
+
+
 def test_empty_registry_has_no_schemas() -> None:
     assert Registry().schemas() == ()

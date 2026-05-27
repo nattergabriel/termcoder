@@ -4,6 +4,8 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
+from termcoder.tools.arguments import ArgumentError, ToolArgs
+
 IGNORED_DIR_NAMES = {
     ".git",
     ".mypy_cache",
@@ -15,6 +17,21 @@ IGNORED_DIR_NAMES = {
     "dist",
     "node_modules",
 }
+
+
+def required_path_arg(args: ToolArgs, key: str) -> Path:
+    return _path_from_string(args.required_string(key), key)
+
+
+def path_arg(args: ToolArgs, key: str, *, default: str = ".") -> Path:
+    value = args.optional_string(key)
+    return _path_from_string(default if value is None else value, key)
+
+
+def _path_from_string(value: str, key: str) -> Path:
+    if value == "":
+        raise ArgumentError(f"{key!r} must not be empty")
+    return Path(value)
 
 
 def display_path(path: Path, root: Path, *, is_dir: bool = False) -> str:

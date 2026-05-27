@@ -3,11 +3,14 @@
 from termcoder.models import ToolCall, ToolResult, ToolSchema
 from termcoder.skills.catalog import SkillCatalog
 from termcoder.tools.arguments import ArgumentError, ToolArgs
+from termcoder.tools.protocol import ToolPermission
 from termcoder.tools.results import invalid_arguments, tool_error, tool_ok
 
 
 class ActivateSkill:
     """Return body-only instructions for a discovered skill."""
+
+    permission: ToolPermission = "always"
 
     def __init__(self, catalog: SkillCatalog) -> None:
         self._catalog = catalog
