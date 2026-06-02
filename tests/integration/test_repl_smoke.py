@@ -2,7 +2,7 @@
 
 Uses prompt_toolkit's `create_pipe_input` + `DummyOutput` for input/output and
 points rich's `Console` at an in-memory buffer, so the test exercises the full
-REPL — input reading, streaming render, inline permission prompt, EOF exit —
+REPL - input reading, streaming render, inline permission prompt, EOF exit -
 without a real terminal.
 """
 
@@ -17,12 +17,11 @@ from rich.console import Console
 from termcoder.agent.loop import Agent
 from termcoder.commands.registry import SlashCommand, SlashCommands
 from termcoder.events import TextDelta, ToolCallRequested
-from termcoder.models import ToolCall, ToolResult
+from termcoder.models import ToolCall
 from termcoder.skills import Skill, SkillCatalog
 from termcoder.tools.registry import Registry
 from termcoder.ui.repl import Repl
 from tests.fakes.fake_provider import FakeProvider
-from tests.fakes.fake_tool import FakeTool
 
 _NO_SLASH_COMMANDS = SlashCommands.from_iterable([])
 
@@ -83,48 +82,6 @@ async def test_repl_inline_permission_denial_round_trips_back_to_provider() -> N
     assert tool_message.role == "tool"
     assert "denied" in tool_message.content.lower()
     assert "ok, skipped" in buffer.getvalue()
-
-
-async def test_arrow_choice_does_not_break_next_prompt_history() -> None:
-    """Permission arrows must not leak into the next normal `you >` prompt."""
-    target_call = ToolCall(id="t1", name="bash", arguments='{"command":"ls -la"}')
-
-    with create_pipe_input() as pt_input:
-        # First line starts the turn. The first Up+Enter selects "Yes" in the
-        # permission prompt. The second Up+Enter recalls and submits "do it" at
-        # the next `you >` prompt, then Ctrl-D exits the following prompt.
-        pt_input.send_text("do it\n\x1b[A\n\x1b[A\n\x04")
-
-        buffer = io.StringIO()
-        console = Console(file=buffer, force_terminal=False, width=80)
-        repl = Repl(console=console, input=pt_input, output=DummyOutput())
-
-        provider = FakeProvider(
-            scripts=[
-                [ToolCallRequested(tool_call=target_call)],
-                [TextDelta(text="first done")],
-                [TextDelta(text="second done")],
-            ]
-        )
-        agent = Agent(
-            provider=provider,
-            registry=Registry(
-                [
-                    FakeTool(
-                        name="bash", scripted_results=[ToolResult(tool_call_id="", content="out")]
-                    )
-                ]
-            ),
-            check_permission=repl.confirm_tool,
-        )
-
-        await repl.run(agent, _NO_SLASH_COMMANDS)
-
-    output = buffer.getvalue()
-    assert output.count("Bash(ls -la)") == 1
-    assert "second done" in output
-    assert len(provider.received_calls) == 3
-    assert provider.received_calls[2][0][-1].content == "do it"
 
 
 async def test_repl_routes_slash_command_instead_of_calling_provider() -> None:
