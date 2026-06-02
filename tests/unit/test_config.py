@@ -107,6 +107,22 @@ def test_unknown_provider_raises(tmp_path: Path) -> None:
         load_config(cwd=tmp_path, user_config_path=user_path)
 
 
+def test_channel_terminal_parses(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'channel = "terminal"\n')
+
+    config = load_config(cwd=tmp_path, user_config_path=user_path)
+    assert config.channel == "terminal"
+
+
+def test_unknown_channel_raises(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'channel = "telegram"\n')
+
+    with pytest.raises(ConfigError, match="channel"):
+        load_config(cwd=tmp_path, user_config_path=user_path)
+
+
 def test_wrong_type_raises(tmp_path: Path) -> None:
     user_path = tmp_path / "user.toml"
     _write(user_path, "model = 42\n")

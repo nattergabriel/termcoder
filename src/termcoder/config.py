@@ -20,11 +20,13 @@ type TomlScalar = str | int | float | bool
 
 type PermissionMode = Literal["ask_each", "allow_readonly", "allow_all"]
 type ProviderName = Literal["openai", "anthropic"]
+type ChannelName = Literal["terminal"]
 
 _PERMISSION_MODES: frozenset[PermissionMode] = frozenset(
     ("ask_each", "allow_readonly", "allow_all")
 )
 _PROVIDER_NAMES: frozenset[ProviderName] = frozenset(("openai", "anthropic"))
+_CHANNEL_NAMES: frozenset[ChannelName] = frozenset(("terminal",))
 
 
 class ConfigError(TermcoderError):
@@ -40,6 +42,7 @@ class Config:
     system_prompt: str | None = None
     permission_mode: PermissionMode = "ask_each"
     max_iterations: int = 25
+    channel: ChannelName = "terminal"
 
 
 def load_config(
@@ -90,6 +93,7 @@ def _from_dict(raw: Mapping[str, Any]) -> Config:
         max_iterations=_as_int(
             raw.get("max_iterations", defaults.max_iterations), "max_iterations"
         ),
+        channel=_as_channel(raw.get("channel", defaults.channel)),
     )
 
 
@@ -121,6 +125,12 @@ def _as_provider(value: object) -> ProviderName:
     if value in _PROVIDER_NAMES:
         return value
     raise ConfigError(f"unknown provider: {value!r}")
+
+
+def _as_channel(value: object) -> ChannelName:
+    if value in _CHANNEL_NAMES:
+        return value
+    raise ConfigError(f"unknown channel: {value!r}")
 
 
 def _serialize_toml(data: Mapping[str, Any]) -> str:
