@@ -4,14 +4,14 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## Project
 
-`termcoder` — an open-source TUI coding agent in Python 3.13.
+`termcoder` — an open-source coding agent in Python 3.13.
 
 ## Commands
 
 All commands assume `uv` is installed. One-time setup after cloning: `uv sync && uv run pre-commit install`.
 
 - `uv sync` — install dependencies (also run after pulling changes to `pyproject.toml` or `uv.lock`).
-- `uv run termcoder` — launch the TUI (once the entry point exists).
+- `uv run termcoder` — launch the configured channel.
 - `uv run pytest` — run the full test suite.
 - `uv run pytest tests/test_smoke.py::test_smoke` — run a single test.
 - `uv run pytest -k <pattern>` — run tests matching `<pattern>`.
@@ -28,10 +28,10 @@ CI (`.github/workflows/ci.yml`) runs `ruff check`, `ruff format --check`, `mypy 
 
 Briefly: layer packages plus cross-cutting root modules.
 
-- **Layer packages:** `providers/` (LLM abstraction), `tools/` (one file per tool behind a Protocol + registry: `read.py`, `write.py`, `edit.py`, `bash.py`, `search.py`, `list_files.py`, `move.py`, `delete.py`, plus `builtins.py` registration, `arguments.py` parsing helpers, `filesystem.py` path/traversal helpers, and `results.py` result helpers), `skills/` (Agent Skills discovery, inline slash activation, and the `activate_skill` tool), `agent/` (orchestration loop, event-log state, prompt assembly), `commands/` (registry + one file per `/`-prefixed REPL directive), `ui/` (REPL orchestration, prompt_toolkit input/history/autocomplete/choice prompts, turn display state, Rich rendering, and formatting helpers).
+- **Layer packages:** `providers/` (LLM abstraction), `tools/` (one file per tool behind a Protocol + registry: `read.py`, `write.py`, `edit.py`, `bash.py`, `search.py`, `list_files.py`, `move.py`, `delete.py`, plus `builtins.py` registration, `arguments.py` parsing helpers, `filesystem.py` path/traversal helpers, and `results.py` result helpers), `skills/` (Agent Skills discovery, inline slash activation, and the `activate_skill` tool), `agent/` (orchestration loop, event-log state, prompt assembly), `commands/` (registry + one file per `/`-prefixed directive), `channels/` (user interaction channels behind a Protocol + registry: `terminal.py`, `telegram.py`, plus `base.py` shared slash-command / skill-injection / event-rendering flow).
 - **Cross-cutting at the root:** `models.py` (shared types), `events.py` (typed `AgentEvent` stream), `app.py` (composition root: builds the `AppContext`), `cli.py` (entry point), `config.py`, `instructions.py` (AGENTS.md discovery and loading), `permissions.py` (policy functions; `ask_each`, `allow_readonly`, and `allow_all`), `errors.py`, `logging.py`.
 
-Two things the loop produces that everything else consumes: `AgentEvent`s (the streaming output of `agent/loop.py`, consumed by the REPL as an async iterator) and shared domain types (`Message`, `ToolCall`, `ToolResult`). Keep both stable — they are the contract.
+Two things the loop produces that everything else consumes: `AgentEvent`s (the streaming output of `agent/loop.py`, consumed by channels as an async iterator) and shared domain types (`Message`, `ToolCall`, `ToolResult`). Keep both stable — they are the contract.
 
 The provider seam **must** support a hand-written `FakeProvider` for tests. Design the interface around that constraint, not around any specific vendor's wire format or SDK shape — most tests run against the fake with no network and no API key.
 
@@ -58,17 +58,17 @@ One PR per logical change (feature, bug fix, refactor, docs update). The user re
 
 ## Design principles
 
-- **Isolate I/O at the edges.** `agent/`, `permissions.py`, `models.py`, `events.py`, `errors.py` are pure — no `print`, no file I/O, no network. Side effects live in `tools/`, `providers/`, `ui/repl.py`, `config.py`, `instructions.py`, `logging.py`. This is what makes the agent loop testable with a `FakeProvider`.
+- **Isolate I/O at the edges.** `agent/`, `permissions.py`, `models.py`, `events.py`, `errors.py` are pure — no `print`, no file I/O, no network. Side effects live in `tools/`, `providers/`, `channels/`, `config.py`, `instructions.py`, `logging.py`. This is what makes the agent loop testable with a `FakeProvider`.
 - **`typing.Protocol` over base classes.** Layer seams (provider, tool, permission policy) are structural. Avoid ABCs and deep inheritance.
 - **Domain types over primitives.** Give meaningful concepts their own type (`ToolName`, `PermissionDecision`, `Turn`, …). Avoid `dict[str, Any]` at module boundaries — mypy can't help you there.
 - **Flat over nested.** Early returns over `else` ladders; short functions over 50-line bodies. If a function needs scrolling to read, it's doing too much.
 
 ## Modularity
 
-Swap a provider, tool, permission policy, or TUI without touching the agent core. The mechanisms:
+Swap a provider, tool, permission policy, or channel without touching the agent core. The mechanisms:
 
 - **Protocols where there's swappability or a test fake.** `Provider` and `Tool` meet that bar — each has multiple implementations and a dedicated fake. Single-impl concepts (`AppContext`, `Config`, `State`, permission functions) use plain classes / plain functions; promote to Protocol when the second implementation actually appears.
-- **Dependency injection at the composition root.** `app.py` builds the `AppContext`; `cli.py` invokes it and hands it to `ui/repl.py`. The agent receives `provider`, `tools`, and a permission-check callable as constructor args. Nothing inside `agent/` or `permissions.py` imports a concrete provider, tool, or UI — the user-prompt is passed in as a callable at composition time.
+- **Dependency injection at the composition root.** `app.py` builds the `AppContext`; `cli.py` builds the configured channel and hands it the runtime objects. The agent receives `provider`, `tools`, and a permission-check callable as constructor args. Nothing inside `agent/` or `permissions.py` imports a concrete provider, tool, or channel — the user-prompt is passed in as a callable at composition time.
 - **Stable internal types as the lingua franca.** `Message`, `ToolCall`, `ToolResult` live in `models.py`; `AgentEvent` in `events.py`. Each provider adapts to/from those types at its boundary; the core never sees OpenAI/Anthropic-shaped data.
 - **Registry + name lookup for any extensible family.** Anything with — or plausibly with — multiple implementations lives in its own package: one file per implementation, a small registry, config-driven selection. `providers/` and `tools/` are the templates; new families adopt the same shape.
 - **Use the family shape from instance #1.** When something *could* grow into a family with peers, put it in its own package with a registry from the start — even if only one implementation exists today. Protocols can wait for the second implementation to land (per above); module structure can't, because moving inlined code later touches every call site. This isn't a speculative abstraction (see § What not to add) — you're using established machinery, just placing code in the right module instead of inlining it at `app.py` or in a cross-cutting root file.

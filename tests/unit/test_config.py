@@ -107,6 +107,46 @@ def test_unknown_provider_raises(tmp_path: Path) -> None:
         load_config(cwd=tmp_path, user_config_path=user_path)
 
 
+def test_channel_terminal_parses(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'channel = "terminal"\n')
+
+    config = load_config(cwd=tmp_path, user_config_path=user_path)
+    assert config.channel == "terminal"
+
+
+def test_channel_telegram_parses(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'channel = "telegram"\n')
+
+    config = load_config(cwd=tmp_path, user_config_path=user_path)
+    assert config.channel == "telegram"
+
+
+def test_telegram_chat_id_parses(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, "telegram_chat_id = -1001234567890\n")
+
+    config = load_config(cwd=tmp_path, user_config_path=user_path)
+    assert config.telegram_chat_id == -1001234567890
+
+
+def test_telegram_chat_id_wrong_type_raises(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'telegram_chat_id = "42"\n')
+
+    with pytest.raises(ConfigError, match="telegram_chat_id"):
+        load_config(cwd=tmp_path, user_config_path=user_path)
+
+
+def test_unknown_channel_raises(tmp_path: Path) -> None:
+    user_path = tmp_path / "user.toml"
+    _write(user_path, 'channel = "matrix"\n')
+
+    with pytest.raises(ConfigError, match="channel"):
+        load_config(cwd=tmp_path, user_config_path=user_path)
+
+
 def test_wrong_type_raises(tmp_path: Path) -> None:
     user_path = tmp_path / "user.toml"
     _write(user_path, "model = 42\n")

@@ -5,7 +5,14 @@ description = "An open-source TUI coding agent."
 readme = "README.md"
 requires-python = ">=3.13"
 license = { file = "LICENSE" }
-dependencies = ["anthropic", "openai", "platformdirs", "prompt_toolkit", "rich"]
+dependencies = [
+    "anthropic",
+    "openai",
+    "platformdirs",
+    "prompt_toolkit",
+    "python-telegram-bot>=22.7",
+    "rich",
+]
 
 [project.scripts]
 termcoder = "termcoder.cli:main"

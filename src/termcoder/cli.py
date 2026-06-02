@@ -1,21 +1,21 @@
-"""Console-script entry point: load config, wire deps, run the REPL."""
+"""Console-script entry point: load config, wire deps, run the selected channel."""
 
 import asyncio
 import contextlib
 from pathlib import Path
 
 from termcoder.app import build
+from termcoder.channels.registry import build_channel
 from termcoder.config import load_config
-from termcoder.ui.repl import Repl
 
 
 def main() -> None:
     cwd = Path.cwd()
     config = load_config(cwd=cwd)
-    repl = Repl()
-    ctx = build(config, repl.confirm_tool, cwd=cwd)
+    channel = build_channel(config)
+    ctx = build(config, channel.confirm_tool, cwd=cwd)
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(repl.run(ctx.agent, ctx.slash_commands, ctx.skills))
+        asyncio.run(channel.run(ctx.agent, ctx.slash_commands, ctx.skills))
 
 
 if __name__ == "__main__":

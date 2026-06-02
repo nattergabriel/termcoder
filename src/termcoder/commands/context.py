@@ -10,7 +10,7 @@ from termcoder.providers.registry import build_provider
 
 @dataclass(slots=True)
 class CommandContext:
-    """State shared by slash commands during a REPL session."""
+    """State shared by slash commands during a channel session."""
 
     agent: Agent
     config: Config

@@ -24,7 +24,7 @@ from termcoder.tools.registry import Registry
 
 @dataclass(frozen=True, slots=True)
 class AppContext:
-    """Runtime objects for one REPL session."""
+    """Runtime objects for one channel session."""
 
     agent: Agent
     config: Config

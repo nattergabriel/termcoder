@@ -15,13 +15,14 @@
 
 ## What it is
 
-termcoder is a local terminal coding agent and a readable reference implementation of one. It is built to be useful on real projects while staying small enough that the full agent loop, provider layer, tool system, permission flow, and TUI can be understood without digging through a large framework.
+termcoder is a local coding agent and a readable reference implementation of one. It is built to be useful on real projects while staying small enough that the full agent loop, provider layer, tool system, permission flow, and channel system can be understood without digging through a large framework.
 
 The goal is not to out-feature mature tools like Claude Code, Codex, or OpenCode. It is a focused open-source project for learning, experimentation, and demonstrating how a practical coding-agent harness can be designed.
 
 ## Features
 
 - Ask for code changes or codebase explanations from a terminal chat.
+- Use the terminal channel by default, or connect through a single Telegram bot chat.
 - Watch streamed responses and live tool-call status while the agent works.
 - Let the agent read, list, search, create, edit, move, and delete files, and run project commands.
 - Choose the approval style that fits the task: confirm every action, auto-allow read-only inspection, or run fully trusted.
@@ -49,12 +50,20 @@ uv run termcoder
 
 OpenAI-compatible providers such as OpenRouter or local llama.cpp servers can be used by setting `OPENAI_BASE_URL`.
 
+To use Telegram, create a bot with BotFather, set `channel = "telegram"` in config, and provide the token as an environment variable:
+
+```bash
+export TELEGRAM_BOT_TOKEN="..."
+uv run termcoder
+```
+
 ## Configuration
 
 Configuration starts with built-in defaults, then applies `~/.config/termcoder/config.toml`, then `.termcoder.toml` in the project. Project settings override user settings. API keys and base URLs stay in environment variables.
 
 ```toml
 provider = "openai"
+channel = "terminal"
 model = "gpt-4o-mini"
 temperature = 0.7
 permission_mode = "ask_each"
@@ -62,6 +71,7 @@ max_iterations = 25
 ```
 
 Supported `permission_mode` values are `ask_each`, `allow_readonly`, and `allow_all`.
+Supported `channel` values are `terminal` and `telegram`.
 
 ## Development
 
@@ -72,7 +82,7 @@ uv run mypy .
 uv run pytest
 ```
 
-The main contract is the typed `AgentEvent` stream produced by `agent/loop.py` and consumed by the REPL. Providers and tools adapt at the edges; the agent core works with internal domain types instead of vendor SDK objects.
+The main contract is the typed `AgentEvent` stream produced by `agent/loop.py` and consumed by channels. Providers, tools, and channels adapt at the edges; the agent core works with internal domain types instead of vendor SDK objects.
 
 ## License
 
