@@ -42,7 +42,7 @@ class _PendingPermission:
 class TelegramChannel(BaseChannel):
     """Telegram Bot API channel backed by python-telegram-bot polling."""
 
-    def __init__(self, *, token: str | None = None) -> None:
+    def __init__(self, *, token: str | None = None, allowed_chat_id: int | None = None) -> None:
         bot_token = token or os.environ.get("TELEGRAM_BOT_TOKEN")
         if not bot_token:
             raise ConfigError("TELEGRAM_BOT_TOKEN must be set when channel is telegram")
@@ -51,6 +51,7 @@ class TelegramChannel(BaseChannel):
             Application.builder().token(bot_token).build()
         )
         self._incoming: asyncio.Queue[_IncomingMessage] = asyncio.Queue()
+        self._allowed_chat_id = allowed_chat_id
         self._chat_id: int | None = None
         self._active_chat_id: int | None = None
         self._pending_permission: _PendingPermission | None = None
@@ -152,17 +153,20 @@ class TelegramChannel(BaseChannel):
             return
 
         text = message.text
-        if text.strip() == "/start":
-            await message.reply_text("termcoder ready")
-            return
-
         if not await self._accept_chat(chat.id):
             return
+        if text.strip() == "/start":
+            await message.reply_text(f"termcoder ready\nchat id: {chat.id}")
+            return
+
         if await self._resolve_permission(chat.id, text):
             return
         await self._incoming.put(_IncomingMessage(chat_id=chat.id, text=text))
 
     async def _accept_chat(self, chat_id: int) -> bool:
+        if self._allowed_chat_id is not None and self._allowed_chat_id != chat_id:
+            await self._send_to_chat(chat_id, "termcoder is not configured for this chat.")
+            return False
         if self._chat_id is None:
             self._chat_id = chat_id
             return True

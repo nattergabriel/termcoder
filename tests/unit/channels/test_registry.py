@@ -17,9 +17,10 @@ def test_builds_terminal_channel_from_config() -> None:
 def test_builds_telegram_channel_from_config(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:ABC")
 
-    channel = build_channel(Config(channel="telegram"))
+    channel = build_channel(Config(channel="telegram", telegram_chat_id=42))
 
     assert isinstance(channel, TelegramChannel)
+    assert channel._allowed_chat_id == 42
 
 
 def test_channel_names_returns_registered_channels() -> None:

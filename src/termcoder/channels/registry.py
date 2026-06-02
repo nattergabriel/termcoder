@@ -12,7 +12,7 @@ type ChannelFactory = Callable[[Config], Channel]
 
 _factories: Mapping[ChannelName, ChannelFactory] = {
     "terminal": lambda _config: TerminalChannel(),
-    "telegram": lambda _config: TelegramChannel(),
+    "telegram": lambda config: TelegramChannel(allowed_chat_id=config.telegram_chat_id),
 }
 
 

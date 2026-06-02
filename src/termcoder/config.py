@@ -43,6 +43,7 @@ class Config:
     permission_mode: PermissionMode = "ask_each"
     max_iterations: int = 25
     channel: ChannelName = "terminal"
+    telegram_chat_id: int | None = None
 
 
 def load_config(
@@ -81,6 +82,7 @@ def _from_dict(raw: Mapping[str, Any]) -> Config:
     defaults = Config()
     max_tokens_raw = raw.get("max_tokens", defaults.max_tokens)
     system_prompt_raw = raw.get("system_prompt", defaults.system_prompt)
+    telegram_chat_id_raw = raw.get("telegram_chat_id", defaults.telegram_chat_id)
     return Config(
         provider=_as_provider(raw.get("provider", defaults.provider)),
         model=_as_str(raw.get("model", defaults.model), "model"),
@@ -94,6 +96,11 @@ def _from_dict(raw: Mapping[str, Any]) -> Config:
             raw.get("max_iterations", defaults.max_iterations), "max_iterations"
         ),
         channel=_as_channel(raw.get("channel", defaults.channel)),
+        telegram_chat_id=(
+            None
+            if telegram_chat_id_raw is None
+            else _as_int(telegram_chat_id_raw, "telegram_chat_id")
+        ),
     )
 
 

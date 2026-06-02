@@ -56,6 +56,40 @@ async def test_permission_answer_from_other_chat_is_not_consumed() -> None:
     assert not future.done()
 
 
+async def test_configured_chat_accepts_only_matching_chat(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    channel = TelegramChannel(token="123:ABC", allowed_chat_id=42)
+    sent: list[tuple[int, str]] = []
+
+    async def send_to_chat(chat_id: int, text: str) -> None:
+        sent.append((chat_id, text))
+
+    monkeypatch.setattr(channel, "_send_to_chat", send_to_chat)
+
+    assert await channel._accept_chat(7) is False
+    assert channel._chat_id is None
+    assert await channel._accept_chat(42) is True
+    assert channel._chat_id == 42
+    assert sent == [(7, "termcoder is not configured for this chat.")]
+
+
+async def test_unconfigured_chat_still_claims_first_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    channel = TelegramChannel(token="123:ABC")
+    sent: list[tuple[int, str]] = []
+
+    async def send_to_chat(chat_id: int, text: str) -> None:
+        sent.append((chat_id, text))
+
+    monkeypatch.setattr(channel, "_send_to_chat", send_to_chat)
+
+    assert await channel._accept_chat(42) is True
+    assert await channel._accept_chat(7) is False
+    assert sent == [(7, "termcoder is already connected to another chat.")]
+
+
 async def test_render_event_batches_text_until_turn_complete(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
