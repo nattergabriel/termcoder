@@ -3,6 +3,7 @@
 from collections.abc import Callable, Mapping
 
 from termcoder.channels.protocol import Channel
+from termcoder.channels.telegram import TelegramChannel
 from termcoder.channels.terminal import TerminalChannel
 from termcoder.config import ChannelName, Config
 
@@ -11,6 +12,7 @@ type ChannelFactory = Callable[[Config], Channel]
 
 _factories: Mapping[ChannelName, ChannelFactory] = {
     "terminal": lambda _config: TerminalChannel(),
+    "telegram": lambda _config: TelegramChannel(),
 }
 
 

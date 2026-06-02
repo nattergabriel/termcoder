@@ -22,7 +22,7 @@ The goal is not to out-feature mature tools like Claude Code, Codex, or OpenCode
 ## Features
 
 - Ask for code changes or codebase explanations from a terminal chat.
-- Use the terminal channel by default, with channel registration kept modular for other user interfaces.
+- Use the terminal channel by default, or connect through a single Telegram bot chat.
 - Watch streamed responses and live tool-call status while the agent works.
 - Let the agent read, list, search, create, edit, move, and delete files, and run project commands.
 - Choose the approval style that fits the task: confirm every action, auto-allow read-only inspection, or run fully trusted.
@@ -50,6 +50,13 @@ uv run termcoder
 
 OpenAI-compatible providers such as OpenRouter or local llama.cpp servers can be used by setting `OPENAI_BASE_URL`.
 
+To use Telegram, create a bot with BotFather, set `channel = "telegram"` in config, and provide the token as an environment variable:
+
+```bash
+export TELEGRAM_BOT_TOKEN="..."
+uv run termcoder
+```
+
 ## Configuration
 
 Configuration starts with built-in defaults, then applies `~/.config/termcoder/config.toml`, then `.termcoder.toml` in the project. Project settings override user settings. API keys and base URLs stay in environment variables.
@@ -64,7 +71,7 @@ max_iterations = 25
 ```
 
 Supported `permission_mode` values are `ask_each`, `allow_readonly`, and `allow_all`.
-The built-in `channel` value is `terminal`.
+Supported `channel` values are `terminal` and `telegram`.
 
 ## Development
 

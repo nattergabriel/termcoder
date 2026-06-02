@@ -20,13 +20,13 @@ type TomlScalar = str | int | float | bool
 
 type PermissionMode = Literal["ask_each", "allow_readonly", "allow_all"]
 type ProviderName = Literal["openai", "anthropic"]
-type ChannelName = Literal["terminal"]
+type ChannelName = Literal["terminal", "telegram"]
 
 _PERMISSION_MODES: frozenset[PermissionMode] = frozenset(
     ("ask_each", "allow_readonly", "allow_all")
 )
 _PROVIDER_NAMES: frozenset[ProviderName] = frozenset(("openai", "anthropic"))
-_CHANNEL_NAMES: frozenset[ChannelName] = frozenset(("terminal",))
+_CHANNEL_NAMES: frozenset[ChannelName] = frozenset(("terminal", "telegram"))
 
 
 class ConfigError(TermcoderError):
