@@ -1,7 +1,7 @@
-<h3 align="center">termcoder</h3>
+# termcoder
 
 <p align="center">
-  An open-source terminal coding agent in Python.<br>
+  <strong>An open-source terminal coding agent in Python.</strong><br>
   Small enough to understand, useful enough to run on a real project.
 </p>
 
@@ -11,27 +11,36 @@
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.13%2B-blue.svg" alt="Python 3.13+" /></a>
 </p>
 
----
+## What It Is
 
-## What it is
+`termcoder` is a local coding agent that runs from your terminal. It can inspect a
+project, explain code, edit files, run commands, and ask for approval before
+taking actions that change your workspace.
 
-termcoder is a local coding agent and a readable reference implementation of one. It is built to be useful on real projects while staying small enough that the full agent loop, provider layer, tool system, permission flow, and channel system can be understood without digging through a large framework.
+It is also a readable implementation of a coding-agent harness: providers, tools,
+commands, skills, permissions, and channels are kept separate so the system can
+be understood and extended without digging through a large framework.
 
-The goal is not to out-feature mature tools like Claude Code, Codex, or OpenCode. It is a focused open-source project for learning, experimentation, and demonstrating how a practical coding-agent harness can be designed.
+## Screenshot
 
-## Features
+<p align="center">
+  <img src=".github/screenshot.png" alt="termcoder terminal session" width="820" />
+</p>
 
-- Ask for code changes or codebase explanations from a terminal chat.
-- Use the terminal channel by default, or connect through a single Telegram bot chat.
-- Watch streamed responses and live tool-call status while the agent works.
-- Let the agent read, list, search, create, edit, move, and delete files, and run project commands.
-- Choose the approval style that fits the task: confirm every action, auto-allow read-only inspection, or run fully trusted.
-- Use OpenAI, Anthropic, or an OpenAI-compatible endpoint such as OpenRouter or a local server.
-- Give the agent project-specific guidance with `AGENTS.md` files inherited from parent directories.
-- Add reusable local Agent Skills and activate them inline with `/skill-name`.
-- Switch provider, model, and temperature during a session with slash commands.
+## Highlights
 
-## Run from source
+- Terminal-first coding workflow with streamed responses and live tool status.
+- Built-in tools for reading, searching, writing, editing, moving, deleting, and
+  running shell commands.
+- Permission modes for different levels of trust: ask for every action,
+  auto-allow read-only inspection, or run fully trusted.
+- Provider support for OpenAI, Anthropic, and OpenAI-compatible endpoints such as
+  OpenRouter or local servers.
+- Project instructions through inherited `AGENTS.md` files.
+- Local Agent Skills that can be activated inline with `/skill-name`.
+- Terminal and Telegram channels behind the same agent loop.
+
+## Quick Start
 
 ```bash
 uv sync
@@ -39,7 +48,7 @@ export OPENAI_API_KEY="..."
 uv run termcoder
 ```
 
-To use Anthropic instead:
+To use Anthropic:
 
 ```bash
 export ANTHROPIC_API_KEY="..."
@@ -48,30 +57,38 @@ uv run termcoder
 /model <anthropic-model>
 ```
 
-OpenAI-compatible providers such as OpenRouter or local llama.cpp servers can be used by setting `OPENAI_BASE_URL`.
-
-To use Telegram, create a bot with BotFather, set `channel = "telegram"` in config, and provide the token as an environment variable:
-
-```bash
-export TELEGRAM_BOT_TOKEN="..."
-uv run termcoder
-```
+OpenAI-compatible providers can be used by setting `OPENAI_BASE_URL`.
 
 ## Configuration
 
-Configuration starts with built-in defaults, then applies `~/.config/termcoder/config.toml`, then `.termcoder.toml` in the project. Project settings override user settings. API keys and base URLs stay in environment variables.
+Configuration is loaded from built-in defaults, then
+`~/.config/termcoder/config.toml`, then `.termcoder.toml` in the current
+project. Project settings override user settings. Secrets stay in environment
+variables.
 
 ```toml
 provider = "openai"
-channel = "terminal"
 model = "gpt-4o-mini"
 temperature = 0.7
 permission_mode = "ask_each"
+channel = "terminal"
 max_iterations = 25
 ```
 
-Supported `permission_mode` values are `ask_each`, `allow_readonly`, and `allow_all`.
-Supported `channel` values are `terminal` and `telegram`.
+Supported `permission_mode` values are `ask_each`, `allow_readonly`, and
+`allow_all`. Supported `channel` values are `terminal` and `telegram`.
+
+## Extending termcoder
+
+`termcoder` is organized around small, swappable pieces:
+
+- providers adapt model APIs into the internal message and tool-call types
+- tools expose file, search, edit, and shell capabilities through a registry
+- channels handle user interaction without changing the agent core
+- slash commands and skills add behavior without becoming part of the main loop
+
+That shape keeps the core agent loop focused while making it straightforward to
+add a provider, tool, command, skill, or channel.
 
 ## Development
 
@@ -81,8 +98,6 @@ uv run ruff format --check
 uv run mypy .
 uv run pytest
 ```
-
-The main contract is the typed `AgentEvent` stream produced by `agent/loop.py` and consumed by channels. Providers, tools, and channels adapt at the edges; the agent core works with internal domain types instead of vendor SDK objects.
 
 ## License
 
