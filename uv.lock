@@ -696,7 +696,6 @@ source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
     { name = "openai" },
-    { name = "platformdirs" },
     { name = "prompt-toolkit" },
     { name = "python-telegram-bot" },
     { name = "rich" },
@@ -715,7 +714,6 @@ dev = [
 requires-dist = [
     { name = "anthropic" },
     { name = "openai" },
-    { name = "platformdirs" },
     { name = "prompt-toolkit" },
     { name = "python-telegram-bot", specifier = ">=22.7" },
     { name = "rich" },

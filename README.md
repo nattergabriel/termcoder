@@ -21,8 +21,6 @@ It is also a readable implementation of a coding-agent harness. Providers, tools
 commands, skills, permissions, and channels are kept separate so the system can
 be understood and extended without digging through a large framework.
 
-## Screenshot
-
 <p align="center">
   <img src=".github/screenshot.png" alt="termcoder terminal session" width="820" />
 </p>
@@ -63,9 +61,9 @@ OpenAI-compatible providers can be used by setting `OPENAI_BASE_URL`.
 ## Configuration
 
 Configuration is loaded from built-in defaults, then
-`~/.config/termcoder/config.toml`, then `.termcoder.toml` in the current
-project. Project settings override user settings. Secrets stay in environment
-variables.
+`~/.termcoder/config.toml`, then `.termcoder.toml` in the current working
+directory. Local settings override user settings. Secrets are read from
+environment variables.
 
 ```toml
 provider = "openai"

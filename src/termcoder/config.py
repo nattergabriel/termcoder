@@ -12,8 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-import platformdirs
-
 from termcoder.errors import TermcoderError
 
 type TomlScalar = str | int | float | bool
@@ -64,7 +62,13 @@ def load_config(
 
 
 def default_user_config_path() -> Path:
-    return Path(platformdirs.user_config_dir("termcoder")) / "config.toml"
+    return Path.home() / ".termcoder" / "config.toml"
+
+
+def ensure_user_config_dir() -> Path:
+    path = default_user_config_path().parent
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def save_setting(key: str, value: TomlScalar, *, path: Path) -> None:

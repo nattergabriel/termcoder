@@ -35,7 +35,7 @@ Two things the loop produces that everything else consumes: `AgentEvent`s (the s
 
 The provider seam **must** support a hand-written `FakeProvider` for tests. Design the interface around that constraint, not around any specific vendor's wire format or SDK shape — most tests run against the fake with no network and no API key.
 
-Configuration loads from env (`OPENAI_API_KEY`, `OPENAI_BASE_URL`, `ANTHROPIC_API_KEY`) for secrets and from TOML for settings, with precedence `.termcoder.toml` (project) > `~/.config/termcoder/config.toml` (user) > built-in defaults.
+Configuration loads from env (`OPENAI_API_KEY`, `OPENAI_BASE_URL`, `ANTHROPIC_API_KEY`) for secrets and from TOML for settings, with precedence `.termcoder.toml` in the current working directory > `~/.termcoder/config.toml` (user) > built-in defaults.
 
 ## Code style and conventions
 
