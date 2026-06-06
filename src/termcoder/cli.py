@@ -6,11 +6,12 @@ from pathlib import Path
 
 from termcoder.app import build
 from termcoder.channels.registry import build_channel
-from termcoder.config import load_config
+from termcoder.config import ensure_user_config_dir, load_config
 
 
 def main() -> None:
     cwd = Path.cwd()
+    ensure_user_config_dir()
     config = load_config(cwd=cwd)
     channel = build_channel(config)
     ctx = build(config, channel.confirm_tool, cwd=cwd)

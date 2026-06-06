@@ -13,6 +13,7 @@ from termcoder.config import (
     Config,
     ConfigError,
     default_user_config_path,
+    ensure_user_config_dir,
     load_config,
     save_setting,
 )
@@ -34,6 +35,18 @@ def test_default_user_config_path_uses_termcoder_home(
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     assert default_user_config_path() == tmp_path / ".termcoder" / "config.toml"
+
+
+def test_ensure_user_config_dir_creates_termcoder_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    path = ensure_user_config_dir()
+
+    assert path == tmp_path / ".termcoder"
+    assert path.is_dir()
+    assert not (path / "config.toml").exists()
 
 
 def test_user_config_overrides_defaults(tmp_path: Path) -> None:

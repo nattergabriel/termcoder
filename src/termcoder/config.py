@@ -65,6 +65,12 @@ def default_user_config_path() -> Path:
     return Path.home() / ".termcoder" / "config.toml"
 
 
+def ensure_user_config_dir() -> Path:
+    path = default_user_config_path().parent
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def save_setting(key: str, value: TomlScalar, *, path: Path) -> None:
     """Write one top-level TOML key, preserving other keys."""
     raw: dict[str, Any] = {}
