@@ -9,7 +9,13 @@ from pathlib import Path
 
 import pytest
 
-from termcoder.config import Config, ConfigError, load_config, save_setting
+from termcoder.config import (
+    Config,
+    ConfigError,
+    default_user_config_path,
+    load_config,
+    save_setting,
+)
 
 
 def _write(path: Path, body: str) -> None:
@@ -20,6 +26,14 @@ def _write(path: Path, body: str) -> None:
 def test_defaults_when_no_files_present(tmp_path: Path) -> None:
     config = load_config(cwd=tmp_path, user_config_path=tmp_path / "missing.toml")
     assert config == Config()
+
+
+def test_default_user_config_path_uses_termcoder_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    assert default_user_config_path() == tmp_path / ".termcoder" / "config.toml"
 
 
 def test_user_config_overrides_defaults(tmp_path: Path) -> None:

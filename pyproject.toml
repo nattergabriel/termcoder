@@ -8,7 +8,6 @@ license = { file = "LICENSE" }
 dependencies = [
     "anthropic",
     "openai",
-    "platformdirs",
     "prompt_toolkit",
     "python-telegram-bot>=22.7",
     "rich",
