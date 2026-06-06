@@ -1,4 +1,4 @@
-# termcoder
+<h3 align="center">termcoder</h3>
 
 <p align="center">
   <strong>An open-source terminal coding agent in Python.</strong><br>
@@ -13,11 +13,11 @@
 
 ## What It Is
 
-`termcoder` is a local coding agent that runs from your terminal. It can inspect a
-project, explain code, edit files, run commands, and ask for approval before
-taking actions that change your workspace.
+`termcoder` is a local coding agent with an interactive terminal interface by
+default. It can inspect a project, explain code, edit files, run commands, and
+ask for approval before taking actions that change your workspace.
 
-It is also a readable implementation of a coding-agent harness: providers, tools,
+It is also a readable implementation of a coding-agent harness. Providers, tools,
 commands, skills, permissions, and channels are kept separate so the system can
 be understood and extended without digging through a large framework.
 
@@ -29,16 +29,17 @@ be understood and extended without digging through a large framework.
 
 ## Highlights
 
-- Terminal-first coding workflow with streamed responses and live tool status.
-- Built-in tools for reading, searching, writing, editing, moving, deleting, and
-  running shell commands.
-- Permission modes for different levels of trust: ask for every action,
+- Interactive terminal channel by default, with Telegram available through the
+  same agent loop.
+- Streamed assistant output and live tool-call status while the agent works.
+- Built-in tools for reading, searching, editing, moving, deleting, and running
+  shell commands.
+- Permission modes for different levels of trust: ask before each action,
   auto-allow read-only inspection, or run fully trusted.
 - Provider support for OpenAI, Anthropic, and OpenAI-compatible endpoints such as
   OpenRouter or local servers.
-- Project instructions through inherited `AGENTS.md` files.
-- Local Agent Skills that can be activated inline with `/skill-name`.
-- Terminal and Telegram channels behind the same agent loop.
+- Project instructions loaded from inherited `AGENTS.md` files.
+- Local Agent Skills discovered automatically and manually activatable with `/skill-name`.
 
 ## Quick Start
 
